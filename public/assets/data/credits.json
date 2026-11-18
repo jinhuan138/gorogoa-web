@@ -1,0 +1,382 @@
+{
+  "fadeIn": 0.5,
+  "fadeOut": 0.5,
+  "spacing": 0.0,
+  "pages": [
+    {
+      "hold": 4.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 20.0,
+          "text": "A game by Jason Roberts"
+        },
+        {
+          "style": "Text",
+          "offset": 70.0,
+          "text": "Sound Design by Eduardo Ortiz Frau"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Music by Joel Corelitz"
+        }
+      ]
+    },
+    {
+      "hold": 8.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 20.0,
+          "text": "Special Thanks"
+        },
+        {
+          "style": "Text",
+          "offset": 20.0,
+          "text": "Luis Antonio, Sam Barlow, Mary Boland"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Chris Bell"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Stephen Bell, Jonathan Blow"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Brooke Condolora, David Condolora"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Ian Dallas, Ted DiNola, Joel Dreskin"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Kathy Durkin, Robert Dyke"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Jake Elliott, Ben Esposito"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Jim Fleming, Jenn Frank"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Bill Graner, Ricky Haggett, Laura Hall"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Roger Hanna"
+        }
+      ]
+    },
+    {
+      "hold": 8.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 20.0,
+          "text": "Special Thanks"
+        },
+        {
+          "style": "Text",
+          "offset": 20.0,
+          "text": "Auriea Harvey, Dick Hogg, Chelsea Howe"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Robin Hunicke"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Aaron Isaksen, Kellan Jett, Dylan Jones"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Alex Jaffe, Itay Keren, Julia Keren Detar"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Seth Killian, Anna Kipnis"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Felix Kramer"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Lulu LaMer, Christopher Langmuir, Josh Lee"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Hanford Lemoore, Alyse Miller"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Claudia Molinari, Melinda Montano"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Todd Murchison, Darcy Nelson"
+        }
+      ]
+    },
+    {
+      "hold": 8.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 20.0,
+          "text": "Special Thanks"
+        },
+        {
+          "style": "Text",
+          "offset": 20.0,
+          "text": "Lysandra Nelson, Johnnemann Nordhagen"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Matteo Pozzi, Greg Rice, Pietro Righi Riva"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Anne Roberts, Tom Roberts"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Andrew Rohrmann, Jenn Sandercock"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Kellee Santiago, Jennifer Schneidereit"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Michal Staniszewski, Bruce Straley, Danielle Swank"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Keita Takahashi, Josephine Tsay"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Anita Tung, Vince Twelve"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Kamina Vincent"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Michael Warner, Austin Wintory, Davey Wreden"
+        }
+      ]
+    },
+    {
+      "hold": 6.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 0.0,
+          "text": "Annapurna Interactive"
+        },
+        {
+          "style": "Text",
+          "offset": 30.0,
+          "text": "Megan Ellison"
+        },
+        {
+          "style": "Text",
+          "offset": 30.0,
+          "text": "Nathan Gary"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Kelsey Hansen"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Neale Hemrajani"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Jeff Legaspi"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Deborah Mars"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "James Masi"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Hector Sanchez"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Joshua Sarfaty"
+        }
+      ]
+    },
+    {
+      "hold": 4.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 0.0,
+          "text": "Wholesale Algorithms"
+        },
+        {
+          "style": "Text",
+          "offset": 30.0,
+          "text": "Gavin Dodd"
+        },
+        {
+          "style": "Text",
+          "offset": 20.0,
+          "text": "Matt Whiting"
+        }
+      ]
+    },
+    {
+      "hold": 8.0,
+      "lines": [
+        {
+          "style": "Heading",
+          "offset": 0.0,
+          "text": "Annapurna Interactive Thanks"
+        },
+        {
+          "style": "Text",
+          "offset": 30.0,
+          "text": "Jenova Chen"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Jordan Marks"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Kees van Dijkhuizen"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Everyone at Annapurna"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Jon Gibson, Amanda White and everyone at iam8bit"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Sibel Sunar, Laura Weir, Janelle Grai, Lucia Botta,"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Deanna Pe and everyone at fortyseven communications"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Enzyme Testing Labs"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "EDS Wordland Ltd."
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Adam Klaff"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Matt Nickerson"
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Sean Jenkin"
+        }
+      ]
+    },
+    {
+      "hold": 8.0,
+      "lines": [
+        {
+          "style": "Text",
+          "offset": 10.0,
+          "text": "Gorogoa was developed with support from <b>Indie Fund</b>."
+        },
+        {
+          "style": "Text",
+          "offset": 100.0,
+          "text": "Cardo font included courtesy of David J. Perry and SIL Open Font License (OFL)."
+        },
+        {
+          "style": "Text",
+          "offset": 0.0,
+          "text": "Crimson Text and Noto fonts included courtesy of SIL Open Font License (OFL)."
+        },
+        {
+          "style": "Text",
+          "offset": 40.0,
+          "text": "Created with Unity. Portions of this program © 2005-2018 Unity Technologies."
+        },
+        {
+          "style": "Text",
+          "offset": 40.0,
+          "text": "© 2017 Buried Signal, LLC. Published by Annapurna Interactive under exclusive license. All rights reserved."
+        }
+      ]
+    }
+  ]
+}

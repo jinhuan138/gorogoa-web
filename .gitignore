@@ -1,0 +1,10 @@
+node_modules/
+dist/
+work/
+docs/evidence/
+*.log
+.vite/
+.vite-temp/
+.env.local
+.env.*.local
+Thumbs.db

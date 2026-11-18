@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Gorogoa</title><link rel="stylesheet" href="./src/game.css">
+</head>
+<body>
+<button id="startup" type="button" aria-label="启动画面，点击播放序曲"></button>
+<main id="game-shell" inert>
+<h1 class="sr-only">Gorogoa</h1>
+<div id="board" aria-label="游戏区域"><canvas id="game" width="700" height="700" aria-label="Gorogoa 游戏画面"></canvas><div id="hotspots" aria-label="可探索的位置"></div><div id="loading" role="status">正在载入…</div></div>
+<p id="hint" class="sr-only">点击画面中的细节，探索彼此相连的世界。</p>
+<p id="notice" role="status" hidden></p>
+</main>
+<button id="pause" type="button" aria-label="暂停" aria-controls="game-menu" aria-expanded="false" disabled>Ⅱ</button>
+<section id="game-menu" role="dialog" aria-modal="true" aria-label="游戏菜单" hidden>
+  <div id="menu-controls" class="menu-page">
+    <div class="settings-audio">
+      <label class="settings-check"><input id="show-hints" type="checkbox" checked><span class="hint-sample" aria-hidden="true"></span><span class="sr-only" data-text="hints">画面提示</span></label>
+      <label class="volume-control effects"><span class="sr-only" data-text="effects">音效</span><input id="volume-effects" type="range" min="0" max="1" step="0.01" value="1"></label>
+      <label class="volume-control music"><span class="sr-only" data-text="music">音乐</span><input id="volume-music" type="range" min="0" max="1" step="0.01" value="1"></label>
+      <button id="sound" class="settings-link" type="button">开启声音</button>
+    </div>
+    <div class="settings-display">
+      <button id="language-open" class="paper-button" type="button" data-text="language">语言</button>
+      <label class="settings-check"><span data-text="fullscreen">全屏</span><input id="game-fullscreen" type="checkbox"></label>
+      <button id="exit-game" class="paper-button" type="button" data-text="exit">退出</button>
+    </div>
+  </div>
+  <div id="chapter-panel" class="menu-page" hidden>
+    <h2 data-text="chapters">选择章节</h2>
+    <div id="chapter-list"></div>
+  </div>
+  <div id="language-panel" class="menu-page" hidden>
+    <h2 data-text="language">语言</h2>
+    <div id="language-list"></div>
+    <button id="language-back" type="button" data-text="back">返回</button>
+  </div>
+  <div id="settings-credits" class="menu-page" hidden>
+    <h2 data-text="credits">制作人员名单</h2>
+    <div id="settings-credits-lines" lang="en"></div>
+    <button id="settings-credits-back" type="button" data-text="back">返回</button>
+  </div>
+  <p id="settings-status" role="status" hidden></p>
+  <div id="title-panel" class="menu-page" hidden>
+    <h2>Gorogoa</h2>
+    <button id="title-resume" type="button" data-text="resume">继续游戏</button>
+  </div>
+  <div id="menu-confirm" class="menu-page" hidden>
+    <h2 id="menu-action"></h2>
+    <p data-text="replaceProgress">这将删除你当前的进度。</p>
+    <div class="menu-actions"><button id="menu-ok" type="button" data-text="ok">确定</button><button id="menu-cancel" type="button" data-text="cancel">取消</button></div>
+  </div>
+</section>
+<canvas id="ending" aria-label="Gorogoa 结局画面" hidden></canvas>
+<section id="credits" aria-label="制作人员名单" hidden>
+  <div id="credits-page" lang="en"></div>
+  <button id="credits-prev" type="button" aria-label="上一页" hidden>‹</button>
+  <button id="credits-next" type="button" aria-label="下一页">›</button>
+</section>
+<script type="module" src="./src/game.js"></script>
+</body></html>
+

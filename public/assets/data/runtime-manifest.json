@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "shape": "{ type, attrs, children, text? }",
+  "stripped": [
+    "fieldModificationLog",
+    "lastModified",
+    "lastModifiedByUser"
+  ],
+  "project": {
+    "sourceFile": "work/extracted-text/sharedassets0-assets-114-Gorogoa.project.txt",
+    "sourceSha256": "d47e2b65c4732467963f4334b86ee6a203ff0fb431b82f0e58e111de85c04c2a",
+    "outputFile": "assets/data/runtime-project.json",
+    "outputSha256": "a30038d5c70faddb862267b0da86c87adf9290213d6001d34d817121f1b99fbe",
+    "bytes": 17433295
+  },
+  "chapter1Save": {
+    "sourceFile": "work/extracted-text/resources-assets-971-chapter1.txt",
+    "sourceSha256": "722577552aa3947f62e211351e6eec00f1e523a01f05345bdb32f00fe1f74d97",
+    "outputFile": "assets/data/runtime-chapter1-save.json",
+    "outputSha256": "91d150a405a2d63e264923dd17cc52b1e7acdc615cb20dad7bf4e3a59f5ea313",
+    "bytes": 61002
+  },
+  "chapterSaves": {
+    "chapter1": {
+      "sourceFile": "work/extracted-text/resources-assets-971-chapter1.txt",
+      "sourceSha256": "722577552aa3947f62e211351e6eec00f1e523a01f05345bdb32f00fe1f74d97",
+      "outputFile": "assets/data/runtime-chapter1-save.json",
+      "outputSha256": "91d150a405a2d63e264923dd17cc52b1e7acdc615cb20dad7bf4e3a59f5ea313",
+      "bytes": 61002
+    },
+    "chapter2": {
+      "sourceFile": "work/extracted-text/resources-assets-880-chapter2.txt",
+      "sourceSha256": "050f34557ad083ac9aa6a0a1f45c8d53c1803f58d80794f2e3c82f72811cc8da",
+      "outputFile": "assets/data/runtime-chapter2-save.json",
+      "outputSha256": "79eba35bcd3b2002f61eb0ea1c9277f503aff00e26bc7f17bca5fea1a1a1b27a",
+      "bytes": 61102
+    },
+    "chapter3": {
+      "sourceFile": "work/extracted-text/resources-assets-855-chapter3.txt",
+      "sourceSha256": "c427b080f2126bd0a6ab97ee358eebf17bb11e91329c4483b9156ad67aaa146c",
+      "outputFile": "assets/data/runtime-chapter3-save.json",
+      "outputSha256": "c7b201cb529ff455dc2628dd81e796da993073425b6ffc9431ad5034d6ca2e34",
+      "bytes": 61565
+    },
+    "chapter4": {
+      "sourceFile": "work/extracted-text/resources-assets-923-chapter4.txt",
+      "sourceSha256": "5ed5916047b59e34b0ead07ee2f8df32c61222863c52e2aa76df78d5b6597cc4",
+      "outputFile": "assets/data/runtime-chapter4-save.json",
+      "outputSha256": "14d9713cbd7494e78bc3f4a5826729ea08712a7828256fe96059765d9311b697",
+      "bytes": 61658
+    },
+    "chapter5": {
+      "sourceFile": "work/extracted-text/resources-assets-932-chapter5.txt",
+      "sourceSha256": "9c435e1ee1f0b4a702eb501c0d56feb051d2abbad3b6daf218e85488c8c6e401",
+      "outputFile": "assets/data/runtime-chapter5-save.json",
+      "outputSha256": "b8737d018ea24ab040c135438a373b703802804171874857ff7c7927f39ab045",
+      "bytes": 62000
+    },
+    "end": {
+      "sourceFile": "work/extracted-text/resources-assets-863-end.txt",
+      "sourceSha256": "6c5ac173cd83eeddf55f0cf5402c4b4c1c1d7d00cf9c56964d3f486068725757",
+      "outputFile": "assets/data/runtime-end-save.json",
+      "outputSha256": "af3d5c230d385aaf732fb189072c6d5a58b9459161021a606dcec8b443f09de1",
+      "bytes": 62415
+    }
+  },
+  "saveKind": "chapterCheckpoint"
+}

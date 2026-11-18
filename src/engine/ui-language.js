@@ -1,0 +1,293 @@
+const english = {
+  menu: 'Game menu', board: 'Game board', hotspots: 'Interactive areas', pause: 'Pause',
+  chapters: 'Select a chapter', chapter: 'Chapter {n}', ending: 'Epilogue', credits: 'Credits',
+  language: 'Language', hints: 'Visual hints', effects: 'Sound effects', music: 'Music',
+  fullscreen: 'Fullscreen', fullscreenError: 'Fullscreen is unavailable in this browser.',
+  exit: 'Exit', resume: 'Continue', restart: 'New game', back: 'Back', ok: 'OK', cancel: 'Cancel',
+  restartQuestion: 'Start a new game?', loadQuestion: 'Load this chapter?',
+  replaceProgress: 'This will replace your current progress.',
+  soundOn: 'Enable sound', soundOff: 'Mute sound', retrySound: 'Retry sound',
+  loading: 'Loading…', loadError: 'Loading failed. Please refresh.',
+  chapterError: 'Could not load this chapter. Try again.', renderError: 'The board could not be drawn. Retrying…',
+  transitionError: 'This transition is unavailable.',
+  explore: 'Explore', retreat: 'Zoom out', left: 'Look left', right: 'Look right', up: 'Look up', down: 'Look down',
+  prologueTip: 'Select details in the picture to explore.', boardTip: 'Explore pictures and drag panels to move, separate, or stack them.',
+  startup: 'Startup screen. Select to play the overture.', previous: 'Previous page', next: 'Next page',
+};
+
+const simplified = {
+  menu: '游戏菜单', board: '游戏区域', hotspots: '可探索的位置', pause: '暂停',
+  chapters: '选择章节', chapter: '第 {n} 章', ending: '结局', credits: '制作人员名单',
+  language: '语言', hints: '画面提示', effects: '音效', music: '音乐',
+  fullscreen: '全屏', fullscreenError: '当前浏览器无法进入全屏。',
+  exit: '退出', resume: '继续游戏', restart: '开始新游戏', back: '返回', ok: '确定', cancel: '取消',
+  restartQuestion: '开始新游戏？', loadQuestion: '载入章节？', replaceProgress: '这将替换你当前的进度。',
+  soundOn: '开启声音', soundOff: '关闭声音', retrySound: '重试开启声音',
+  loading: '正在载入…', loadError: '载入失败，请刷新重试。',
+  chapterError: '章节载入失败，请重试。', renderError: '画面载入遇到问题，正在重试。',
+  transitionError: '这一处的画面转换暂不可用。',
+  explore: '探索画面', retreat: '退后查看', left: '向左看', right: '向右看', up: '向上看', down: '向下看',
+  prologueTip: '点击画面中的细节，探索彼此相连的世界。', boardTip: '点击探索，拖动卡片来分开、拼接或叠放。',
+  startup: '启动画面，点击播放序曲', previous: '上一页', next: '下一页',
+};
+
+const traditional = {
+  menu: '遊戲選單', board: '遊戲區域', hotspots: '可探索的位置', pause: '暫停',
+  chapters: '選擇章節', chapter: '第 {n} 章', ending: '結局', credits: '製作人員名單',
+  language: '語言', hints: '畫面提示', effects: '音效', music: '音樂',
+  fullscreen: '全螢幕', fullscreenError: '目前的瀏覽器無法進入全螢幕。',
+  exit: '離開', resume: '繼續遊戲', restart: '開始新遊戲', back: '返回', ok: '確定', cancel: '取消',
+  restartQuestion: '開始新遊戲？', loadQuestion: '載入章節？', replaceProgress: '這將取代你目前的進度。',
+  soundOn: '開啟聲音', soundOff: '關閉聲音', retrySound: '重試開啟聲音',
+  loading: '正在載入…', loadError: '載入失敗，請重新整理。',
+  chapterError: '章節載入失敗，請重試。', renderError: '畫面載入發生問題，正在重試。',
+  transitionError: '此處的畫面切換暫時無法使用。',
+  explore: '探索畫面', retreat: '退後查看', left: '向左看', right: '向右看', up: '向上看', down: '向下看',
+  prologueTip: '點擊畫面中的細節，探索彼此相連的世界。', boardTip: '點擊探索，拖曳卡片來分開、拼接或堆疊。',
+  startup: '啟動畫面，點擊播放序曲', previous: '上一頁', next: '下一頁',
+};
+
+const japanese = {
+  menu: 'ゲームメニュー', board: 'ゲーム画面', hotspots: '調べられる場所', pause: '一時停止',
+  chapters: 'チャプター選択', chapter: '第 {n} 章', ending: 'エピローグ', credits: 'クレジット',
+  language: '言語', hints: '画面のヒント', effects: '効果音', music: '音楽',
+  fullscreen: '全画面', fullscreenError: 'このブラウザーでは全画面表示を利用できません。',
+  exit: '終了', resume: '続ける', restart: 'はじめから', back: '戻る', ok: '決定', cancel: 'キャンセル',
+  restartQuestion: '新しいゲームを始めますか？', loadQuestion: 'この章を読み込みますか？',
+  replaceProgress: '現在の進行状況が上書きされます。',
+  soundOn: '音を有効にする', soundOff: '消音する', retrySound: '音を再試行',
+  loading: '読み込み中…', loadError: '読み込めませんでした。ページを再読み込みしてください。',
+  chapterError: 'チャプターを読み込めませんでした。', renderError: '画面を描画できませんでした。再試行中…',
+  transitionError: 'ここでは画面を切り替えられません。',
+  explore: '絵を調べる', retreat: '引いて見る', left: '左を見る', right: '右を見る', up: '上を見る', down: '下を見る',
+  prologueTip: '絵の細部を選んで探索します。', boardTip: '絵を探索し、パネルをドラッグして移動、分離、重ね合わせができます。',
+  startup: '起動画面。選択すると序曲を再生します。', previous: '前のページ', next: '次のページ',
+};
+
+const menuKeys = [
+  'menu', 'pause', 'chapters', 'chapter', 'ending', 'credits',
+  'language', 'hints', 'effects', 'music', 'fullscreen',
+  'exit', 'resume', 'restart', 'back', 'ok', 'cancel',
+  'restartQuestion', 'loadQuestion', 'replaceProgress',
+  'soundOn', 'soundOff', 'retrySound', 'loading',
+];
+const menuTranslations = {
+  es: [
+    'Menú del juego', 'Pausa', 'Seleccionar capítulo', 'Capítulo {n}', 'Epílogo', 'Créditos',
+    'Idioma', 'Pistas visuales', 'Efectos de sonido', 'Música', 'Pantalla completa',
+    'Salir', 'Continuar', 'Nueva partida', 'Volver', 'Aceptar', 'Cancelar',
+    '¿Iniciar una nueva partida?', '¿Cargar este capítulo?', 'Se sustituirá el progreso actual.',
+    'Activar sonido', 'Silenciar', 'Reintentar sonido', 'Cargando…',
+  ],
+  'es-MX': [
+    'Menú del juego', 'Pausa', 'Elegir capítulo', 'Capítulo {n}', 'Epílogo', 'Créditos',
+    'Idioma', 'Pistas visuales', 'Efectos de sonido', 'Música', 'Pantalla completa',
+    'Salir', 'Continuar', 'Nuevo juego', 'Regresar', 'Aceptar', 'Cancelar',
+    '¿Iniciar un nuevo juego?', '¿Cargar este capítulo?', 'Se reemplazará tu progreso actual.',
+    'Activar sonido', 'Silenciar', 'Reintentar sonido', 'Cargando…',
+  ],
+  de: [
+    'Spielmenü', 'Pause', 'Kapitel auswählen', 'Kapitel {n}', 'Epilog', 'Mitwirkende',
+    'Sprache', 'Sichtbare Hinweise', 'Soundeffekte', 'Musik', 'Vollbild',
+    'Beenden', 'Fortsetzen', 'Neues Spiel', 'Zurück', 'OK', 'Abbrechen',
+    'Ein neues Spiel beginnen?', 'Dieses Kapitel laden?', 'Der aktuelle Fortschritt wird ersetzt.',
+    'Ton einschalten', 'Stummschalten', 'Ton erneut versuchen', 'Wird geladen…',
+  ],
+  fr: [
+    'Menu du jeu', 'Pause', 'Choisir un chapitre', 'Chapitre {n}', 'Épilogue', 'Générique',
+    'Langue', 'Indices visuels', 'Effets sonores', 'Musique', 'Plein écran',
+    'Quitter', 'Continuer', 'Nouvelle partie', 'Retour', 'OK', 'Annuler',
+    'Commencer une nouvelle partie ?', 'Charger ce chapitre ?', 'La progression actuelle sera remplacée.',
+    'Activer le son', 'Couper le son', 'Réessayer le son', 'Chargement…',
+  ],
+  it: [
+    'Menu di gioco', 'Pausa', 'Scegli un capitolo', 'Capitolo {n}', 'Epilogo', 'Crediti',
+    'Lingua', 'Indizi visivi', 'Effetti sonori', 'Musica', 'Schermo intero',
+    'Esci', 'Continua', 'Nuova partita', 'Indietro', 'OK', 'Annulla',
+    'Iniziare una nuova partita?', 'Caricare questo capitolo?', 'I progressi attuali verranno sostituiti.',
+    'Attiva audio', 'Disattiva audio', 'Riprova audio', 'Caricamento…',
+  ],
+  pl: [
+    'Menu gry', 'Pauza', 'Wybierz rozdział', 'Rozdział {n}', 'Epilog', 'Twórcy',
+    'Język', 'Podpowiedzi wizualne', 'Efekty dźwiękowe', 'Muzyka', 'Pełny ekran',
+    'Wyjdź', 'Kontynuuj', 'Nowa gra', 'Wróć', 'OK', 'Anuluj',
+    'Rozpocząć nową grę?', 'Wczytać ten rozdział?', 'Bieżący postęp zostanie zastąpiony.',
+    'Włącz dźwięk', 'Wycisz', 'Ponów próbę włączenia dźwięku', 'Wczytywanie…',
+  ],
+  'pt-BR': [
+    'Menu do jogo', 'Pausa', 'Escolher capítulo', 'Capítulo {n}', 'Epílogo', 'Créditos',
+    'Idioma', 'Dicas visuais', 'Efeitos sonoros', 'Música', 'Tela cheia',
+    'Sair', 'Continuar', 'Novo jogo', 'Voltar', 'OK', 'Cancelar',
+    'Começar um novo jogo?', 'Carregar este capítulo?', 'Seu progresso atual será substituído.',
+    'Ativar som', 'Silenciar', 'Tentar ativar o som de novo', 'Carregando…',
+  ],
+  tr: [
+    'Oyun menüsü', 'Duraklat', 'Bölüm seç', 'Bölüm {n}', 'Sonsöz', 'Emeği geçenler',
+    'Dil', 'Görsel ipuçları', 'Ses efektleri', 'Müzik', 'Tam ekran',
+    'Çık', 'Devam et', 'Yeni oyun', 'Geri', 'Tamam', 'İptal',
+    'Yeni bir oyun başlatılsın mı?', 'Bu bölüm yüklensin mi?', 'Mevcut ilerlemen değiştirilecek.',
+    'Sesi aç', 'Sesi kapat', 'Sesi yeniden dene', 'Yükleniyor…',
+  ],
+  th: [
+    'เมนูเกม', 'พักเกม', 'เลือกบท', 'บทที่ {n}', 'บทส่งท้าย', 'รายชื่อผู้สร้าง',
+    'ภาษา', 'คำใบ้บนหน้าจอ', 'เสียงประกอบ', 'เพลง', 'เต็มหน้าจอ',
+    'ออก', 'เล่นต่อ', 'เกมใหม่', 'ย้อนกลับ', 'ตกลง', 'ยกเลิก',
+    'เริ่มเกมใหม่หรือไม่?', 'โหลดบทนี้หรือไม่?', 'ความคืบหน้าปัจจุบันจะถูกแทนที่',
+    'เปิดเสียง', 'ปิดเสียง', 'ลองเปิดเสียงอีกครั้ง', 'กำลังโหลด…',
+  ],
+  nl: [
+    'Spelmenu', 'Pauze', 'Kies een hoofdstuk', 'Hoofdstuk {n}', 'Epiloog', 'Makers',
+    'Taal', 'Visuele hints', 'Geluidseffecten', 'Muziek', 'Volledig scherm',
+    'Afsluiten', 'Doorgaan', 'Nieuw spel', 'Terug', 'OK', 'Annuleren',
+    'Een nieuw spel starten?', 'Dit hoofdstuk laden?', 'Je huidige voortgang wordt vervangen.',
+    'Geluid aanzetten', 'Geluid dempen', 'Geluid opnieuw proberen', 'Laden…',
+  ],
+  ru: [
+    'Меню игры', 'Пауза', 'Выбрать главу', 'Глава {n}', 'Эпилог', 'Титры',
+    'Язык', 'Визуальные подсказки', 'Звуковые эффекты', 'Музыка', 'Полный экран',
+    'Выйти', 'Продолжить', 'Новая игра', 'Назад', 'ОК', 'Отмена',
+    'Начать новую игру?', 'Загрузить эту главу?', 'Текущий прогресс будет заменён.',
+    'Включить звук', 'Выключить звук', 'Попробовать включить звук снова', 'Загрузка…',
+  ],
+  sv: [
+    'Spelmeny', 'Pausa', 'Välj kapitel', 'Kapitel {n}', 'Epilog', 'Medverkande',
+    'Språk', 'Visuella ledtrådar', 'Ljudeffekter', 'Musik', 'Helskärm',
+    'Avsluta', 'Fortsätt', 'Nytt spel', 'Tillbaka', 'OK', 'Avbryt',
+    'Starta ett nytt spel?', 'Ladda det här kapitlet?', 'Dina nuvarande framsteg ersätts.',
+    'Slå på ljudet', 'Stäng av ljudet', 'Försök slå på ljudet igen', 'Laddar…',
+  ],
+  ar: [
+    'قائمة اللعبة', 'إيقاف مؤقت', 'اختر فصلًا', 'الفصل {n}', 'الخاتمة', 'فريق العمل',
+    'اللغة', 'التلميحات المرئية', 'المؤثرات الصوتية', 'الموسيقى', 'ملء الشاشة',
+    'خروج', 'متابعة', 'لعبة جديدة', 'رجوع', 'موافق', 'إلغاء',
+    'هل تريد بدء لعبة جديدة؟', 'هل تريد تحميل هذا الفصل؟', 'سيتم استبدال تقدمك الحالي.',
+    'تشغيل الصوت', 'كتم الصوت', 'إعادة محاولة تشغيل الصوت', 'جارٍ التحميل…',
+  ],
+  ko: [
+    '게임 메뉴', '일시 정지', '장 선택', '제{n}장', '에필로그', '제작진',
+    '언어', '화면 힌트', '효과음', '음악', '전체 화면',
+    '나가기', '계속하기', '새 게임', '뒤로', '확인', '취소',
+    '새 게임을 시작할까요?', '이 장을 불러올까요?', '현재 진행 상황이 덮어써집니다.',
+    '소리 켜기', '소리 끄기', '소리 켜기 재시도', '불러오는 중…',
+  ],
+};
+const gameKeys = [
+  'board', 'hotspots', 'explore', 'retreat', 'left', 'right', 'up', 'down',
+  'prologueTip', 'boardTip', 'startup', 'previous', 'next',
+  'fullscreenError', 'loadError', 'chapterError', 'renderError', 'transitionError',
+];
+const spanishGame = [
+  'Tablero', 'Zonas interactivas', 'Explorar', 'Alejar', 'Mirar a la izquierda', 'Mirar a la derecha', 'Mirar arriba', 'Mirar abajo',
+  'Selecciona detalles de la imagen para explorar.', 'Explora las imágenes y arrastra los paneles para moverlos, separarlos o superponerlos.',
+  'Pantalla de inicio. Selecciona para escuchar la obertura.', 'Página anterior', 'Página siguiente',
+  'Este navegador no permite el modo de pantalla completa.', 'No se pudo cargar el juego. Actualiza la página.',
+  'No se pudo cargar el capítulo. Inténtalo de nuevo.', 'No se pudo dibujar el tablero. Reintentando…', 'Esta transición no está disponible.',
+];
+const gameTranslations = {
+  es: spanishGame,
+  'es-MX': spanishGame,
+  de: [
+    'Spielfeld', 'Interaktive Bereiche', 'Erkunden', 'Herauszoomen', 'Nach links schauen', 'Nach rechts schauen', 'Nach oben schauen', 'Nach unten schauen',
+    'Wähle Details im Bild aus, um sie zu erkunden.', 'Erkunde die Bilder und ziehe die Felder, um sie zu verschieben, zu trennen oder übereinanderzulegen.',
+    'Startbildschirm. Auswählen, um die Ouvertüre abzuspielen.', 'Vorherige Seite', 'Nächste Seite',
+    'Vollbild ist in diesem Browser nicht verfügbar.', 'Das Spiel konnte nicht geladen werden. Lade die Seite neu.',
+    'Das Kapitel konnte nicht geladen werden. Versuche es erneut.', 'Das Spielfeld konnte nicht gezeichnet werden. Neuer Versuch…', 'Dieser Übergang ist nicht verfügbar.',
+  ],
+  fr: [
+    'Plateau de jeu', 'Zones interactives', 'Explorer', 'Dézoomer', 'Regarder à gauche', 'Regarder à droite', 'Regarder en haut', 'Regarder en bas',
+    'Sélectionnez des détails de l’image pour les explorer.', 'Explorez les images et faites glisser les cases pour les déplacer, les séparer ou les superposer.',
+    'Écran de démarrage. Sélectionnez-le pour écouter l’ouverture.', 'Page précédente', 'Page suivante',
+    'Le plein écran est indisponible dans ce navigateur.', 'Le jeu n’a pas pu se charger. Actualisez la page.',
+    'Impossible de charger ce chapitre. Réessayez.', 'Impossible d’afficher le plateau. Nouvelle tentative…', 'Cette transition est indisponible.',
+  ],
+  it: [
+    'Tabellone', 'Aree interattive', 'Esplora', 'Riduci ingrandimento', 'Guarda a sinistra', 'Guarda a destra', 'Guarda in alto', 'Guarda in basso',
+    'Seleziona i dettagli dell’immagine per esplorarli.', 'Esplora le immagini e trascina i riquadri per spostarli, separarli o sovrapporli.',
+    'Schermata di avvio. Selezionala per riprodurre l’ouverture.', 'Pagina precedente', 'Pagina successiva',
+    'Lo schermo intero non è disponibile in questo browser.', 'Impossibile caricare il gioco. Aggiorna la pagina.',
+    'Impossibile caricare il capitolo. Riprova.', 'Impossibile visualizzare il tabellone. Nuovo tentativo…', 'Questa transizione non è disponibile.',
+  ],
+  pl: [
+    'Plansza gry', 'Obszary interaktywne', 'Zbadaj', 'Oddal', 'Spójrz w lewo', 'Spójrz w prawo', 'Spójrz w górę', 'Spójrz w dół',
+    'Wybierz szczegóły obrazu, aby je zbadać.', 'Badaj obrazy i przeciągaj plansze, aby je przesuwać, rozdzielać lub układać jedna na drugiej.',
+    'Ekran startowy. Wybierz go, aby odtworzyć uwerturę.', 'Poprzednia strona', 'Następna strona',
+    'Ta przeglądarka nie obsługuje trybu pełnoekranowego.', 'Nie udało się wczytać gry. Odśwież stronę.',
+    'Nie udało się wczytać rozdziału. Spróbuj ponownie.', 'Nie udało się wyświetlić planszy. Ponawianie…', 'To przejście jest niedostępne.',
+  ],
+  'pt-BR': [
+    'Tabuleiro', 'Áreas interativas', 'Explorar', 'Afastar', 'Olhar à esquerda', 'Olhar à direita', 'Olhar para cima', 'Olhar para baixo',
+    'Selecione detalhes da imagem para explorá-los.', 'Explore as imagens e arraste os quadros para movê-los, separá-los ou sobrepô-los.',
+    'Tela inicial. Selecione para ouvir a abertura.', 'Página anterior', 'Próxima página',
+    'A tela cheia não está disponível neste navegador.', 'Não foi possível carregar o jogo. Atualize a página.',
+    'Não foi possível carregar o capítulo. Tente novamente.', 'Não foi possível desenhar o tabuleiro. Tentando novamente…', 'Esta transição não está disponível.',
+  ],
+  tr: [
+    'Oyun alanı', 'Etkileşimli alanlar', 'Keşfet', 'Uzaklaştır', 'Sola bak', 'Sağa bak', 'Yukarı bak', 'Aşağı bak',
+    'Keşfetmek için resimdeki ayrıntıları seç.', 'Resimleri keşfet ve panelleri taşımak, ayırmak veya üst üste koymak için sürükle.',
+    'Başlangıç ekranı. Uvertürü dinlemek için seç.', 'Önceki sayfa', 'Sonraki sayfa',
+    'Bu tarayıcıda tam ekran kullanılamıyor.', 'Oyun yüklenemedi. Sayfayı yenile.',
+    'Bölüm yüklenemedi. Tekrar dene.', 'Oyun alanı çizilemedi. Yeniden deneniyor…', 'Bu geçiş kullanılamıyor.',
+  ],
+  th: [
+    'กระดานเกม', 'พื้นที่โต้ตอบ', 'สำรวจ', 'ซูมออก', 'มองซ้าย', 'มองขวา', 'มองขึ้น', 'มองลง',
+    'เลือกรายละเอียดในภาพเพื่อสำรวจ', 'สำรวจภาพและลากแผ่นภาพเพื่อย้าย แยก หรือซ้อนกัน',
+    'หน้าจอเริ่มต้น เลือกเพื่อเล่นเพลงเปิด', 'หน้าก่อนหน้า', 'หน้าถัดไป',
+    'เบราว์เซอร์นี้ไม่สามารถแสดงผลแบบเต็มหน้าจอได้', 'โหลดเกมไม่สำเร็จ โปรดรีเฟรชหน้า',
+    'โหลดบทนี้ไม่สำเร็จ โปรดลองอีกครั้ง', 'แสดงกระดานไม่สำเร็จ กำลังลองอีกครั้ง…', 'ไม่สามารถเปลี่ยนฉากตรงนี้ได้',
+  ],
+  nl: [
+    'Speelbord', 'Interactieve gebieden', 'Verkennen', 'Uitzoomen', 'Kijk naar links', 'Kijk naar rechts', 'Kijk omhoog', 'Kijk omlaag',
+    'Selecteer details in de afbeelding om ze te verkennen.', 'Verken de afbeeldingen en sleep de panelen om ze te verplaatsen, te scheiden of te stapelen.',
+    'Startscherm. Selecteer om de ouverture af te spelen.', 'Vorige pagina', 'Volgende pagina',
+    'Volledig scherm is niet beschikbaar in deze browser.', 'Het spel kon niet worden geladen. Vernieuw de pagina.',
+    'Het hoofdstuk kon niet worden geladen. Probeer het opnieuw.', 'Het speelbord kon niet worden getekend. Nieuwe poging…', 'Deze overgang is niet beschikbaar.',
+  ],
+  ru: [
+    'Игровое поле', 'Интерактивные области', 'Исследовать', 'Отдалить', 'Посмотреть влево', 'Посмотреть вправо', 'Посмотреть вверх', 'Посмотреть вниз',
+    'Выбирайте детали изображения, чтобы их исследовать.', 'Исследуйте изображения и перетаскивайте панели, чтобы перемещать, разделять или накладывать их друг на друга.',
+    'Начальный экран. Нажмите, чтобы услышать увертюру.', 'Предыдущая страница', 'Следующая страница',
+    'В этом браузере полноэкранный режим недоступен.', 'Не удалось загрузить игру. Обновите страницу.',
+    'Не удалось загрузить главу. Попробуйте ещё раз.', 'Не удалось отобразить игровое поле. Повторная попытка…', 'Этот переход недоступен.',
+  ],
+  sv: [
+    'Spelplan', 'Interaktiva områden', 'Utforska', 'Zooma ut', 'Titta åt vänster', 'Titta åt höger', 'Titta upp', 'Titta ned',
+    'Välj detaljer i bilden för att utforska dem.', 'Utforska bilderna och dra rutorna för att flytta, skilja åt eller stapla dem.',
+    'Startskärm. Välj för att spela ouvertyren.', 'Föregående sida', 'Nästa sida',
+    'Helskärm är inte tillgängligt i den här webbläsaren.', 'Spelet kunde inte laddas. Uppdatera sidan.',
+    'Kapitlet kunde inte laddas. Försök igen.', 'Spelplanen kunde inte ritas. Försöker igen…', 'Den här övergången är inte tillgänglig.',
+  ],
+  ar: [
+    'لوحة اللعب', 'المناطق التفاعلية', 'استكشف', 'تصغير', 'انظر يسارًا', 'انظر يمينًا', 'انظر للأعلى', 'انظر للأسفل',
+    'اختر التفاصيل في الصورة لاستكشافها.', 'استكشف الصور واسحب اللوحات لتحريكها أو فصلها أو تكديسها.',
+    'شاشة البدء. اخترها لتشغيل المقطوعة الافتتاحية.', 'الصفحة السابقة', 'الصفحة التالية',
+    'وضع ملء الشاشة غير متاح في هذا المتصفح.', 'تعذر تحميل اللعبة. حدّث الصفحة.',
+    'تعذر تحميل الفصل. حاول مرة أخرى.', 'تعذر عرض لوحة اللعب. تجري إعادة المحاولة…', 'هذا الانتقال غير متاح.',
+  ],
+  ko: [
+    '게임판', '상호 작용 영역', '살펴보기', '축소', '왼쪽 보기', '오른쪽 보기', '위 보기', '아래 보기',
+    '그림 속 세부 요소를 선택해 살펴보세요.', '그림을 살펴보고 패널을 끌어 옮기거나 분리하거나 겹쳐 보세요.',
+    '시작 화면입니다. 선택하면 서곡이 재생됩니다.', '이전 페이지', '다음 페이지',
+    '이 브라우저에서는 전체 화면을 사용할 수 없습니다.', '게임을 불러오지 못했습니다. 페이지를 새로 고쳐 주세요.',
+    '장을 불러오지 못했습니다. 다시 시도해 주세요.', '게임판을 그리지 못했습니다. 다시 시도하는 중…', '이 장면으로 전환할 수 없습니다.',
+  ],
+};
+const translations = {
+  'zh-CN': simplified, 'zh-TW': traditional, en: english, ja: japanese,
+  ...Object.fromEntries(Object.entries(menuTranslations).map(([code, labels])=>[
+    code, {
+      ...Object.fromEntries(menuKeys.map((key,index)=>[key,labels[index]])),
+      ...Object.fromEntries(gameKeys.map((key,index)=>[key,gameTranslations[code][index]])),
+    },
+  ])),
+};
+export const languages = {
+  'zh-CN': '简体中文', 'zh-TW': '繁體中文', en: 'English', es: 'Español', 'es-MX': 'Español (México)',
+  de: 'Deutsch', fr: 'Français', it: 'Italiano', pl: 'Polski', 'pt-BR': 'Português (Brasil)',
+  tr: 'Türkçe', th: 'ไทย', nl: 'Nederlands', ja: '日本語', ru: 'Русский', sv: 'Svenska',
+  ar: 'العربية', ko: '한국어',
+};
+export const supportsLanguage = code => Object.hasOwn(translations, code);
+export function translate(code, key, number) {
+  const value = (translations[code] ?? simplified)[key] ?? english[key];
+  return number === undefined ? value : value.replace('{n}', String(number));
+}

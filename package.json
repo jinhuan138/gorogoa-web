@@ -1,0 +1,28 @@
+{
+  "name": "gorogoa-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "volta": {
+    "node": "22.16.0"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "check:codecs": "node tools/check-texture-codecs.mjs",
+    "check:assets": "node tools/check-assets.mjs",
+    "check:project": "node tools/check-project.mjs",
+    "check:camera": "node tools/check-camera.mjs",
+    "check:renderer": "node tools/check-renderer.mjs",
+    "check:animation": "node tools/check-animation.mjs",
+    "check:state": "node tools/check-state.mjs",
+    "check:storage": "node tools/check-storage.mjs"
+  },
+  "devDependencies": {
+    "vite": "8.3.6"
+  }
+}

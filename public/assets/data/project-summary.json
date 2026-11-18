@@ -1,0 +1,186 @@
+{
+  "sourceProjectSha256": "d47e2b65c4732467963f4334b86ee6a203ff0fb431b82f0e58e111de85c04c2a",
+  "startingCard": "card002-4f4d4069-c466-47fd-9bd2-45a835436492",
+  "counts": {
+    "Card": 25,
+    "Scene": 70,
+    "SceneLocation": 452,
+    "SceneLayer": 575,
+    "StateFlag": 1434,
+    "StateTransition": 1244,
+    "LocationTransition": 640,
+    "AtomicPredicate": 3927,
+    "CompoundPredicate": 2022,
+    "MotionKeyframes": 625,
+    "CardLink": 81,
+    "Script": 6
+  },
+  "cards": [
+    {
+      "id": "card002",
+      "guid": "card002-4f4d4069-c466-47fd-9bd2-45a835436492",
+      "startingLocation": "city1a000-51e93555-9ab5-4fee-9f1d-224a72aa70fa",
+      "scenes": 4
+    },
+    {
+      "id": "card001",
+      "guid": "card001-3e88f77f-2f24-4b3c-addc-c930a422186c",
+      "startingLocation": "window_hole-a44e97cb-43bd-4133-9a5c-dfe5a653e1c3",
+      "scenes": 6
+    },
+    {
+      "id": "card006",
+      "guid": "card006-d45395e2-40c6-4b23-bbb0-7ca00613abfa",
+      "startingLocation": "eye-b90ef177-3f96-48df-b2f7-fe8f181b633d",
+      "scenes": 3
+    },
+    {
+      "id": "card003",
+      "guid": "card003-cf3186a9-a3bf-429b-86ef-c79973fe37e7",
+      "startingLocation": "box-d1ce34eb-22f5-4b39-884a-8512badf3b1d",
+      "scenes": 1
+    },
+    {
+      "id": "card004",
+      "guid": "card004-adebe9aa-32ab-42dd-8c5a-2e9f7e3d6e60",
+      "startingLocation": "arch only-54ebdd9d-2ba0-43f2-88e2-672dd7612f1a",
+      "scenes": 3
+    },
+    {
+      "id": "card010",
+      "guid": "card010-3143eeee-f51a-41eb-b268-2dd313e9e48d",
+      "startingLocation": "wide-ea87a99a-db1a-47f5-990a-70eee7a5ad29",
+      "scenes": 12
+    },
+    {
+      "id": "card001b",
+      "guid": "card001b-3818aeb5-79ba-4a5a-b8ec-e11db27df357",
+      "startingLocation": "obj3-1bd8b1a3-53b4-4810-b170-12cbbe44179b",
+      "scenes": 1
+    },
+    {
+      "id": "card001a",
+      "guid": "card001a-be059f85-89cb-4ff7-8476-1e139b8638e1",
+      "startingLocation": "obj1-74ee5ea9-789f-4bf7-94e0-e36e8d2c18b3",
+      "scenes": 1
+    },
+    {
+      "id": "card011",
+      "guid": "card011-65371960-8b36-454d-b6f4-11c1d17fc8df",
+      "startingLocation": "win-99d023bc-d09b-4880-8841-ee1467efbe36",
+      "scenes": 5
+    },
+    {
+      "id": "card012",
+      "guid": "card012-4265aff5-488e-4d49-a6fb-0d2730c627f8",
+      "startingLocation": "sign_init-d9e2b418-da6d-4271-8886-11c976279788",
+      "scenes": 5
+    },
+    {
+      "id": "card001c",
+      "guid": "card001c-7e24280f-ac6e-4ddb-a5ec-743a03271c05",
+      "startingLocation": "medallion-1f5d4141-0c85-43cb-89f3-edb4a6b5b265",
+      "scenes": 6
+    },
+    {
+      "id": "card011f",
+      "guid": "card011f-54477d4f-a7ab-4f5a-bd05-6ef5fd720daa",
+      "startingLocation": "watch-4e3a940a-f807-46ed-ac13-86d8fb4bc82a",
+      "scenes": 1
+    },
+    {
+      "id": "card012quilt",
+      "guid": "card012quilt-5cfb28ca-d29d-4bc2-bebd-c13b28beba7e",
+      "startingLocation": "panel0-081d7251-7fca-432c-ac91-4f792a7af2fd",
+      "scenes": 1
+    },
+    {
+      "id": "card012books",
+      "guid": "card012books-0e2002f7-3f98-4e3e-9904-d87e4dbef675",
+      "startingLocation": "scissors-11b5bdb7-cdf0-4ffc-a3df-61fc1cac0095",
+      "scenes": 1
+    },
+    {
+      "id": "card012room",
+      "guid": "card012room-bf8df795-53c9-450e-9c8a-5b81e199118e",
+      "startingLocation": "room-af6a9d13-8524-4926-93e3-a7a6f4f61e71",
+      "scenes": 1
+    },
+    {
+      "id": "card007",
+      "guid": "Card007-3b26b28d-8241-45bd-92d2-2c7e74969f22",
+      "startingLocation": "medallion-b97405b6-0a1e-468f-918b-25fd129e527a",
+      "scenes": 3
+    },
+    {
+      "id": "card007hilltop",
+      "guid": "card007hilltop-9bc3d941-a24c-4aa0-99e4-7811901d7229",
+      "startingLocation": "init-0ba38383-5c97-4be8-a7b2-f7829d2e47d2",
+      "scenes": 1
+    },
+    {
+      "id": "card012memories",
+      "guid": "card012memories-f8faec11-9f07-4faa-a5b7-559d7bc117c5",
+      "startingLocation": "thought-2b047645-27ca-435b-8da9-fe111577ab3a",
+      "scenes": 5
+    },
+    {
+      "id": "card013a",
+      "guid": "card012devotions-f94f4157-9fc8-498a-946b-4f004703b64e",
+      "startingLocation": "pic_close-2c11a58e-cf3e-43cd-a660-60aaf1605271",
+      "scenes": 1
+    },
+    {
+      "id": "card013c",
+      "guid": "card013b-0822710c-9e95-416d-9170-c40997d59274",
+      "startingLocation": "all-9cef15fd-7df6-48ed-a575-f27d601ae12c",
+      "scenes": 1
+    },
+    {
+      "id": "card013b",
+      "guid": "card013b-8e135390-edff-47ed-8ee4-c3844cedbef5",
+      "startingLocation": "wide2-47f1c1d6-5c5b-40c4-8a8a-6672ab602cd9",
+      "scenes": 2
+    },
+    {
+      "id": "card013e",
+      "guid": "card013e-26728752-5455-42b9-aec3-26d43bba7d6e",
+      "startingLocation": "all-91198640-a484-4ab8-9813-259ec2a8476d",
+      "scenes": 3
+    },
+    {
+      "id": "card013d",
+      "guid": "card013d-1c09110e-1a81-4a58-8d05-fad79454ccb5",
+      "startingLocation": "big_wheel-9395aa0b-4cfa-4b70-a0f3-1ad450bb5aff",
+      "scenes": 1
+    },
+    {
+      "id": "card014",
+      "guid": "card014-cdda7195-ac10-4e0c-8648-8aba262142e2",
+      "startingLocation": "top-52f49fa8-fdea-437d-9003-bd4c0d0b37a8",
+      "scenes": 1
+    },
+    {
+      "id": "card005",
+      "guid": "card005-89bf7078-e6dd-4628-b8a6-93b1549db8f5",
+      "startingLocation": "medallion-bd78922b-3b5c-4611-b644-1a53481083b3",
+      "scenes": 1
+    }
+  ],
+  "scriptClasses": [
+    {
+      "name": "com.gorogoa.scripts.compass.NeedleScript",
+      "count": 1
+    },
+    {
+      "name": "com.gorogoa.scripts.fire.FireScript",
+      "count": 3
+    },
+    {
+      "name": "com.gorogoa.scripts.twinkle.TwinkleScript",
+      "count": 2
+    }
+  ],
+  "missingAtlases": [],
+  "atlasRegions": 6238
+}
