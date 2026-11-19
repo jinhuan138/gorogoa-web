@@ -1,42 +1,59 @@
-const FOREGROUND = Symbol('Score Foreground');
+const FOREGROUND = Symbol("Score Foreground");
 const LOCAL_LAYER_COUNT = 4;
-const silence = { clipKey: null, volume: 1, pan: .5, fade: 1, delay: 0, loop: false, interrupt: true };
+const silence = {
+  clipKey: null,
+  volume: 1,
+  pan: 0.5,
+  fade: 1,
+  delay: 0,
+  loop: false,
+  interrupt: true,
+};
 
 export function componentPath(project, node) {
   const ids = [];
-  for (let part = node; part && part !== project.tree; part = project.parent.get(part)) {
+  for (
+    let part = node;
+    part && part !== project.tree;
+    part = project.parent.get(part)
+  ) {
     if (part.attrs.id) ids.push(part.attrs.id);
   }
-  return ids.reverse().join('/');
+  return ids.reverse().join("/");
 }
 
 // Track.setVolume applies the original quantized logarithmic fader.
 export function trackGain(value) {
   const volume = Math.max(0, Math.min(1, value));
-  if (volume <= .001) return 0;
+  if (volume <= 0.001) return 0;
   const fraction = Math.fround((Math.fround(10 ** volume) - 1) / 9);
   const scaled = Math.fround(100 * Math.fround(1 / fraction));
   const nearest = Math.round(scaled);
-  const decibelsInv = nearest - scaled === .5 && nearest % 2 ? nearest - 1 : nearest;
-  return Math.fround(1 / Math.fround(Math.fround(.01) * decibelsInv));
+  const decibelsInv =
+    nearest - scaled === 0.5 && nearest % 2 ? nearest - 1 : nearest;
+  return Math.fround(1 / Math.fround(Math.fround(0.01) * decibelsInv));
 }
 
 // ProjectComponent._ImportAttributes allocates a distinct auto ID for entries
 // with no XML ID. Use their source/index to preserve that distinction here.
-const eventId = event => event.attrs.id || event.source + '#' + event.index;
-const seconds = value => Math.trunc(Math.fround(Math.fround(Number(value ?? 0)) * 1000)) / 1000;
+const eventId = (event) => event.attrs.id || event.source + "#" + event.index;
+const seconds = (value) =>
+  Math.trunc(Math.fround(Math.fround(Number(value ?? 0)) * 1000)) / 1000;
 
 function settings(event) {
-  if (!event?.clipKey) return event?.attrs.interrupt === 'false' ? { ...silence, interrupt: false } : silence;
+  if (!event?.clipKey)
+    return event?.attrs.interrupt === "false"
+      ? { ...silence, interrupt: false }
+      : silence;
   const a = event.attrs;
-  const interrupt = a.interrupt !== 'false';
+  const interrupt = a.interrupt !== "false";
   return {
     clipKey: event.clipKey,
     volume: Number(a.volume ?? 1),
-    pan: Number(a.pan ?? .5),
-    fade: Math.max(interrupt ? 0 : .1, seconds(a.fadeIn)),
+    pan: Number(a.pan ?? 0.5),
+    fade: Math.max(interrupt ? 0 : 0.1, seconds(a.fadeIn)),
     delay: Math.max(0, seconds(a.startDelay)),
-    loop: a.loop !== 'false',
+    loop: a.loop !== "false",
     interrupt,
   };
 }
@@ -58,18 +75,29 @@ export class ScoreDirector {
     this.grid = null;
     for (const event of events) {
       const { type, locPath, milestone } = event.attrs;
-      if (milestone && event.source.startsWith('soundtrack/amb_')) this.ambientMilestones.add(milestone);
-      if (type !== 'music') continue;
+      if (milestone && event.source.startsWith("soundtrack/amb_"))
+        this.ambientMilestones.add(milestone);
+      if (type !== "music") continue;
       if (locPath && !this.local.has(locPath)) this.local.set(locPath, event);
-      if (!locPath && milestone && !this.cues.has(milestone)) this.cues.set(milestone, event);
+      if (!locPath && milestone && !this.cues.has(milestone))
+        this.cues.set(milestone, event);
     }
-    this.sequences = project.container(project.tree, 'milestoneSequences', 'MilestoneSequence').map(sequence => ({
-      sequence,
-      milestones: project.container(sequence, 'milestones', 'Milestone').map(milestone => ({
-        path: componentPath(project, milestone),
-        predicate: project.container(milestone, 'predicate')[0],
-      })),
-    })).filter(({ milestones }) => milestones.some(({ path }) => this.cues.has(path) || this.ambientMilestones.has(path)));
+    this.sequences = project
+      .container(project.tree, "milestoneSequences", "MilestoneSequence")
+      .map((sequence) => ({
+        sequence,
+        milestones: project
+          .container(sequence, "milestones", "Milestone")
+          .map((milestone) => ({
+            path: componentPath(project, milestone),
+            predicate: project.container(milestone, "predicate")[0],
+          })),
+      }))
+      .filter(({ milestones }) =>
+        milestones.some(
+          ({ path }) => this.cues.has(path) || this.ambientMilestones.has(path),
+        ),
+      );
   }
 
   stop() {
@@ -82,11 +110,17 @@ export class ScoreDirector {
   }
 
   sync(state, navigation) {
-    if (this.bank.context?.state !== 'running') return;
+    if (this.bank.context?.state !== "running") return;
     const now = this.bank.context.currentTime;
     // Grid changes and capture of audio focus reevaluate every stable card.
-    const grid = JSON.stringify([[...state.inPlay], [...state.coords], [...state.captors]]);
-    const refreshAll = grid !== this.grid || Boolean(navigation && navigation !== this.lastNavigation);
+    const grid = JSON.stringify([
+      [...state.inPlay],
+      [...state.coords],
+      [...state.captors],
+    ]);
+    const refreshAll =
+      grid !== this.grid ||
+      Boolean(navigation && navigation !== this.lastNavigation);
     this.grid = grid;
     this.lastNavigation = navigation;
     for (const [key, voice] of this.voices) {
@@ -103,14 +137,16 @@ export class ScoreDirector {
         continue;
       }
       const guidOfLocation = state.locations.get(guid);
-      if (!refreshAll && voice.location === guidOfLocation && !voice.navigating) continue;
+      if (!refreshAll && voice.location === guidOfLocation && !voice.navigating)
+        continue;
       voice.location = guidOfLocation;
       voice.navigating = false;
       const location = this.project.get(guidOfLocation);
-      const scene = this.project.owner(location, 'Scene');
-      let event = this.local.get(componentPath(this.project, location)) ??
+      const scene = this.project.owner(location, "Scene");
+      let event =
+        this.local.get(componentPath(this.project, location)) ??
         this.local.get(componentPath(this.project, scene));
-      if (event?.attrs.loop === 'false') {
+      if (event?.attrs.loop === "false") {
         const id = eventId(event);
         if (this.played.has(id)) event = null;
         else this.played.add(id);
@@ -121,13 +157,19 @@ export class ScoreDirector {
     for (const { sequence, milestones } of this.sequences) {
       let active;
       for (const milestone of milestones) {
-        if (!milestone.predicate || state.isSatisfied(milestone.predicate) === true) active = milestone;
+        if (
+          !milestone.predicate ||
+          state.isSatisfied(milestone.predicate) === true
+        )
+          active = milestone;
       }
       const previous = this.activeMilestones.get(sequence);
       if (active === previous) continue;
       if (active) this.activeMilestones.set(sequence, active);
       else this.activeMilestones.delete(sequence);
-      ambientChanged ||= this.ambientMilestones.has(previous?.path) || this.ambientMilestones.has(active?.path);
+      ambientChanged ||=
+        this.ambientMilestones.has(previous?.path) ||
+        this.ambientMilestones.has(active?.path);
       const cue = this.firstActiveCue();
       if (!cue || this.played.has(eventId(cue))) continue;
       this.played.add(eventId(cue));
@@ -138,7 +180,9 @@ export class ScoreDirector {
   }
 
   isMilestoneActive(path) {
-    return Array.from(this.activeMilestones.values()).some(milestone => milestone.path === path);
+    return Array.from(this.activeMilestones.values()).some(
+      (milestone) => milestone.path === path,
+    );
   }
 
   firstActiveCue() {
@@ -152,8 +196,19 @@ export class ScoreDirector {
   voice(key) {
     let voice = this.voices.get(key);
     if (voice) return voice;
-    if (key !== FOREGROUND && this.voices.size - Number(this.voices.has(FOREGROUND)) >= LOCAL_LAYER_COUNT) return null;
-    voice = { key, location: null, navigating: false, current: null, pending: null };
+    if (
+      key !== FOREGROUND &&
+      this.voices.size - Number(this.voices.has(FOREGROUND)) >=
+        LOCAL_LAYER_COUNT
+    )
+      return null;
+    voice = {
+      key,
+      location: null,
+      navigating: false,
+      current: null,
+      pending: null,
+    };
     this.voices.set(key, voice);
     return voice;
   }
@@ -161,34 +216,53 @@ export class ScoreDirector {
   schedule(voice, event, now) {
     const next = settings(event);
     const { current, pending } = voice;
-    const matches = entry => entry && entry.clipKey === next.clipKey && entry.volume === next.volume;
+    const matches = (entry) =>
+      entry && entry.clipKey === next.clipKey && entry.volume === next.volume;
     if (matches(current) || matches(pending)) return;
     if (!next.clipKey && !current && !pending) return;
     let delay = next.delay;
-    if (!next.interrupt && current?.clipKey && current.clipKey !== next.clipKey && current.duration > 0) {
+    if (
+      !next.interrupt &&
+      current?.clipKey &&
+      current.clipKey !== next.clipKey &&
+      current.duration > 0
+    ) {
       const elapsed = Math.max(0, now - current.startedAt);
-      const remaining = current.loop ? current.duration - elapsed % current.duration : current.duration - elapsed;
+      const remaining = current.loop
+        ? current.duration - (elapsed % current.duration)
+        : current.duration - elapsed;
       delay = Math.max(delay, Math.max(0, remaining));
     }
-    const request = { ...next, due: now + delay, buffer: null, starting: false };
+    const request = {
+      ...next,
+      due: now + delay,
+      buffer: null,
+      starting: false,
+    };
     voice.pending = request;
     if (request.clipKey) {
-      this.bank.load(request.clipKey).then(({ buffer }) => {
-        request.buffer = buffer;
-        if (this.bank.context.state === 'running') this.startDue(voice, this.bank.context.currentTime);
-      }).catch(error => this.fail(voice, request, error));
+      this.bank
+        .load(request.clipKey)
+        .then(({ buffer }) => {
+          request.buffer = buffer;
+          if (this.bank.context.state === "running")
+            this.startDue(voice, this.bank.context.currentTime);
+        })
+        .catch((error) => this.fail(voice, request, error));
     }
   }
 
   fail(voice, request, error) {
-    if (this.voices.get(voice.key) !== voice || voice.pending !== request) return;
+    if (this.voices.get(voice.key) !== voice || voice.pending !== request)
+      return;
     voice.pending = null;
-    console.warn('配乐未播放', error);
+    console.warn("配乐未播放", error);
   }
 
   startDue(voice, now) {
     const request = voice.pending;
-    const valid = () => this.voices.get(voice.key) === voice && voice.pending === request;
+    const valid = () =>
+      this.voices.get(voice.key) === voice && voice.pending === request;
     if (!request || !valid() || request.starting || now < request.due) return;
     const previous = voice.current;
     if (!request.clipKey) {
@@ -207,27 +281,30 @@ export class ScoreDirector {
     }
     request.starting = true;
     const track = { ...request, duration: request.buffer.duration };
-    this.bank.play(request.clipKey, {
-      channel: 'music',
-      volume: request.fade ? 0 : gain,
-      pan: request.pan,
-      loop: request.loop,
-      shouldPlay: valid,
-      onEnd: () => {
-        if (voice.current === track) voice.current = null;
-      },
-    }).then(handle => {
-      if (!handle) return;
-      if (!valid()) {
-        handle.stop();
-        return;
-      }
-      this.fadeOut(voice.current?.handle, request.fade);
-      voice.pending = null;
-      track.handle = handle;
-      track.startedAt = handle.startedAt ?? this.bank.context.currentTime;
-      voice.current = track;
-      if (request.fade) this.ramp(handle, gain, request.pan, request.fade);
-    }).catch(error => this.fail(voice, request, error));
+    this.bank
+      .play(request.clipKey, {
+        channel: "music",
+        volume: request.fade ? 0 : gain,
+        pan: request.pan,
+        loop: request.loop,
+        shouldPlay: valid,
+        onEnd: () => {
+          if (voice.current === track) voice.current = null;
+        },
+      })
+      .then((handle) => {
+        if (!handle) return;
+        if (!valid()) {
+          handle.stop();
+          return;
+        }
+        this.fadeOut(voice.current?.handle, request.fade);
+        voice.pending = null;
+        track.handle = handle;
+        track.startedAt = handle.startedAt ?? this.bank.context.currentTime;
+        voice.current = track;
+        if (request.fade) this.ramp(handle, gain, request.pan, request.fade);
+      })
+      .catch((error) => this.fail(voice, request, error));
   }
 }

@@ -3,15 +3,20 @@ const CACHE_BUDGET = 96 * 1024 * 1024;
 /** 原版声音资源播放器。通过用户操作启用上下文后才播放。 */
 export class AudioBank {
   constructor(contextOrOptions = {}) {
-    const isContext = typeof contextOrOptions?.decodeAudioData === 'function';
+    const isContext = typeof contextOrOptions?.decodeAudioData === "function";
     this.context = isContext ? contextOrOptions : null;
-    this.baseUrl = (isContext ? undefined : contextOrOptions.baseUrl) || globalThis.document?.baseURI;
+    this.baseUrl =
+      (isContext ? undefined : contextOrOptions.baseUrl) ||
+      globalThis.document?.baseURI;
     this.manifest = null;
     this.pending = new Map();
     this.buffers = new Map();
     this.cachedBytes = 0;
     this.playing = new Set();
-    this.channelVolumes = new Map([['music', 1], ['effects', 1]]);
+    this.channelVolumes = new Map([
+      ["music", 1],
+      ["effects", 1],
+    ]);
     this.channels = new Map();
   }
 
@@ -20,7 +25,8 @@ export class AudioBank {
     const level = Math.max(0, Math.min(1, volume));
     this.channelVolumes.set(channel, level);
     const output = this.channels.get(channel);
-    if (output) output.gain.setTargetAtTime(level, this.context.currentTime, .015);
+    if (output)
+      output.gain.setTargetAtTime(level, this.context.currentTime, 0.015);
   }
 
   channelOutput(channel) {
@@ -36,13 +42,16 @@ export class AudioBank {
   }
 
   loadManifest() {
-    if (!this.baseUrl) throw new Error('缺少音频资源根 URL');
+    if (!this.baseUrl) throw new Error("缺少音频资源根 URL");
     if (!this.manifest) {
       this.manifest = (async () => {
-        const response = await fetch(new URL('assets/audio/manifest.json', this.baseUrl));
-        if (!response.ok) throw new Error(`音频目录读取失败 (${response.status})`);
+        const response = await fetch(
+          new URL("assets/audio/manifest.json", this.baseUrl),
+        );
+        if (!response.ok)
+          throw new Error(`音频目录读取失败 (${response.status})`);
         return response.json();
-      })().catch(error => {
+      })().catch((error) => {
         this.manifest = null;
         throw error;
       });
@@ -53,19 +62,22 @@ export class AudioBank {
   async resume() {
     if (!this.context) {
       const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
-      if (!Context) throw new Error('浏览器不支持 Web Audio');
+      if (!Context) throw new Error("浏览器不支持 Web Audio");
       this.context = new Context();
     }
-    if (this.context.state !== 'running') await this.context.resume();
+    if (this.context.state !== "running") await this.context.resume();
     return this.context;
   }
 
   async load(name) {
-    if (!this.context) throw new Error('请先通过用户操作启用声音');
+    if (!this.context) throw new Error("请先通过用户操作启用声音");
     const manifest = await this.loadManifest();
-    const matches = manifest.clips.filter(clip => clip.name === name || clip.key === name);
+    const matches = manifest.clips.filter(
+      (clip) => clip.name === name || clip.key === name,
+    );
     if (!matches.length) throw new Error(`音频尚未恢复：${name}`);
-    if (new Set(matches.map(clip => clip.dataSha256)).size > 1) throw new Error(`音频名称多义：${name}`);
+    if (new Set(matches.map((clip) => clip.dataSha256)).size > 1)
+      throw new Error(`音频名称多义：${name}`);
     const clip = matches[0];
     const cached = this.buffers.get(clip.key);
     if (cached) {
@@ -77,9 +89,15 @@ export class AudioBank {
       const pending = (async () => {
         const response = await fetch(new URL(clip.url, this.baseUrl));
         if (!response.ok) throw new Error(`声音读取失败 (${response.status})`);
-        const buffer = await this.context.decodeAudioData(await response.arrayBuffer());
-        if (buffer.numberOfChannels !== clip.channels) throw new Error(`声音声道数不符：${name}`);
-        const bytes = buffer.length * buffer.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
+        const buffer = await this.context.decodeAudioData(
+          await response.arrayBuffer(),
+        );
+        if (buffer.numberOfChannels !== clip.channels)
+          throw new Error(`声音声道数不符：${name}`);
+        const bytes =
+          buffer.length *
+          buffer.numberOfChannels *
+          Float32Array.BYTES_PER_ELEMENT;
         const entry = { clip, buffer, bytes };
         if (bytes <= CACHE_BUDGET) {
           this.buffers.set(clip.key, entry);
@@ -100,12 +118,17 @@ export class AudioBank {
   async decodeAll(names) {
     const manifest = await this.loadManifest();
     const results = [];
-    for (const name of names || manifest.clips.map(clip => clip.key)) {
+    for (const name of names || manifest.clips.map((clip) => clip.key)) {
       try {
         const { clip, buffer } = await this.load(name);
         results.push({
-          name: clip.name, key: clip.key, decoded: true, channels: buffer.numberOfChannels,
-          sampleRate: buffer.sampleRate, duration: buffer.duration, expectedDuration: clip.durationExpected,
+          name: clip.name,
+          key: clip.key,
+          decoded: true,
+          channels: buffer.numberOfChannels,
+          sampleRate: buffer.sampleRate,
+          duration: buffer.duration,
+          expectedDuration: clip.durationExpected,
           durationDifference: buffer.duration - clip.durationExpected,
         });
       } catch (error) {
@@ -115,11 +138,22 @@ export class AudioBank {
     return results;
   }
 
-  async play(name, {
-    volume = 1, pan = .5, loop = false, when = 0, offset = 0, duration, playbackRate = 1, channel = 'effects',
-    shouldPlay = () => true, onEnd = () => {},
-  } = {}) {
-    if (!this.context) throw new Error('请先通过用户操作启用声音');
+  async play(
+    name,
+    {
+      volume = 1,
+      pan = 0.5,
+      loop = false,
+      when = 0,
+      offset = 0,
+      duration,
+      playbackRate = 1,
+      channel = "effects",
+      shouldPlay = () => true,
+      onEnd = () => {},
+    } = {},
+  ) {
+    if (!this.context) throw new Error("请先通过用户操作启用声音");
     const { clip, buffer } = await this.load(name);
     if (!shouldPlay()) return null;
 

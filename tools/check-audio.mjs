@@ -1,24 +1,39 @@
-import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import fs from 'node:fs';
-import { crc32 } from 'node:zlib';
-import { modesFromSetup, oggCRC, readUnityVorbisSetup } from './export-audio.mjs';
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import { crc32 } from "node:zlib";
+import {
+  modesFromSetup,
+  oggCRC,
+  readUnityVorbisSetup,
+} from "./export-audio.mjs";
 
-const manifest = JSON.parse(fs.readFileSync(new URL('../public/assets/audio/manifest.json', import.meta.url)));
-const player = fs.readFileSync('E:/SteamLibrary/steamapps/common/Gorogoa/UnityPlayer.dll');
+const manifest = JSON.parse(
+  fs.readFileSync(
+    new URL("../public/assets/audio/manifest.json", import.meta.url),
+  ),
+);
+const player = fs.readFileSync(
+  "E:/SteamLibrary/steamapps/common/Gorogoa/UnityPlayer.dll",
+);
 const setups = new Map();
 let pages = 0;
 
 for (const clip of manifest.clips) {
   const id = Number.parseInt(clip.setupID, 16);
   if (!setups.has(id)) setups.set(id, readUnityVorbisSetup(player, id).bytes);
-  const data = fs.readFileSync(new URL(`../public/${clip.url}`, import.meta.url));
-  assert.equal(createHash('sha256').update(data).digest('hex'), clip.outputSha256);
+  const data = fs.readFileSync(
+    new URL(`../public/${clip.url}`, import.meta.url),
+  );
+  assert.equal(
+    createHash("sha256").update(data).digest("hex"),
+    clip.outputSha256,
+  );
   let offset = 0;
   let sequence = 0;
   let lastGranule = 0n;
   while (offset < data.length) {
-    assert.equal(data.toString('ascii', offset, offset + 4), 'OggS');
+    assert.equal(data.toString("ascii", offset, offset + 4), "OggS");
     const headerSize = 27 + data[offset + 26];
     const lace = data.subarray(offset + 27, offset + headerSize);
     const packetSize = lace.reduce((sum, value) => sum + value, 0);
@@ -50,5 +65,6 @@ for (const clip of manifest.clips) {
   assert.equal(clip.durationExpected, clip.samples / clip.frequency);
 }
 
-console.log(`音频检查通过：${manifest.clips.length} 个文件、${pages} 页、${setups.size} 种与原版 FSB5 匹配的解码头。`);
-
+console.log(
+  `音频检查通过：${manifest.clips.length} 个文件、${pages} 页、${setups.size} 种与原版 FSB5 匹配的解码头。`,
+);

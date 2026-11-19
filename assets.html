@@ -1,24 +1,51 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gorogoa · 原版素材核对</title>
-  <link rel="stylesheet" href="./src/style.css" />
-</head>
-<body>
-  <main>
-    <header><p class="eyebrow">GOROGOA / WEB PORT</p><h1>原版素材核对</h1><p class="intro">逐张检查恢复的画面。这里是移植校验工具，游戏交互仍在还原中。</p></header>
-    <p id="status" role="status">正在读取素材目录…</p>
-    <section class="toolbar" aria-label="选择素材">
-      <label>查看内容<select id="mode"><option value="regions">画面碎片</option><option value="textures">完整图集</option></select></label>
-      <label class="search">查找<input id="search" type="search" placeholder="例如 card002、city1" /></label>
-      <label class="item">选择画面<select id="selection"></select></label>
-      <button id="background" type="button">切换底色</button>
-    </section>
-    <figure><div id="stage"><canvas id="canvas" aria-label="恢复后的原版图片"></canvas></div><figcaption id="caption"></figcaption></figure>
-    <details><summary>还原进度</summary><p>已恢复图集、画面裁切数据和原版项目配置。关卡状态、动画播放、拖动叠层和音效尚未完成，不应将本页当作游戏完成版。</p><p id="summary"></p></details>
-  </main>
-  <script type="module" src="./src/main.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gorogoa · 原版素材核对</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">GOROGOA / WEB PORT</p>
+        <h1>原版素材核对</h1>
+        <p class="intro">
+          逐张检查恢复的画面。这里是移植校验工具，游戏交互仍在还原中。
+        </p>
+      </header>
+      <p id="status" role="status">正在读取素材目录…</p>
+      <section class="toolbar" aria-label="选择素材">
+        <label
+          >查看内容<select id="mode">
+            <option value="regions">画面碎片</option>
+            <option value="textures">完整图集</option>
+          </select></label
+        >
+        <label class="search"
+          >查找<input
+            id="search"
+            type="search"
+            placeholder="例如 card002、city1"
+        /></label>
+        <label class="item">选择画面<select id="selection"></select></label>
+        <button id="background" type="button">切换底色</button>
+      </section>
+      <figure>
+        <div id="stage">
+          <canvas id="canvas" aria-label="恢复后的原版图片"></canvas>
+        </div>
+        <figcaption id="caption"></figcaption>
+      </figure>
+      <details>
+        <summary>还原进度</summary>
+        <p>
+          已恢复图集、画面裁切数据和原版项目配置。关卡状态、动画播放、拖动叠层和音效尚未完成，不应将本页当作游戏完成版。
+        </p>
+        <p id="summary"></p>
+      </details>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
 </html>

@@ -1,5 +1,5 @@
-import { AudioBank } from './audio.js';
-import { componentPath, ScoreDirector, trackGain } from './score.js';
+import { AudioBank } from "./audio.js";
+import { componentPath, ScoreDirector, trackGain } from "./score.js";
 
 const SFX_LIMIT = 4;
 
@@ -29,16 +29,22 @@ export class SoundtrackDirector {
 
     for (const event of events) {
       const { source, attrs } = event;
-      if (source.startsWith('soundtrack/amb_') && attrs.locPath) append(this.locations, attrs.locPath, event);
-      if (attrs.type === 'sfx' && attrs.anim && !this.animations.has(attrs.anim)) {
+      if (source.startsWith("soundtrack/amb_") && attrs.locPath)
+        append(this.locations, attrs.locPath, event);
+      if (
+        attrs.type === "sfx" &&
+        attrs.anim &&
+        !this.animations.has(attrs.anim)
+      ) {
         this.animations.set(attrs.anim, event);
       }
-      if (source === 'soundtrack/interface_sfx' && attrs.type) append(this.interface, attrs.type, event);
+      if (source === "soundtrack/interface_sfx" && attrs.type)
+        append(this.interface, attrs.type, event);
     }
   }
 
   get running() {
-    return this.bank.context?.state === 'running';
+    return this.bank.context?.state === "running";
   }
 
   resume() {
@@ -51,7 +57,10 @@ export class SoundtrackDirector {
 
   syncScore(state, navigation) {
     if (this.score.sync(state, navigation) && this.locationKey) {
-      const seconds = navigation?.destination === this.locationKey ? navigation.plan.durationSeconds : .01;
+      const seconds =
+        navigation?.destination === this.locationKey
+          ? navigation.plan.durationSeconds
+          : 0.01;
       this.syncLocation(this.locationKey, seconds, true);
     }
   }
@@ -88,7 +97,7 @@ export class SoundtrackDirector {
       handle.stop();
       return;
     }
-    this.ramp(handle, 0, .5, seconds);
+    this.ramp(handle, 0, 0.5, seconds);
     try {
       handle.source.stop(this.bank.context.currentTime + seconds);
     } catch {
@@ -97,7 +106,7 @@ export class SoundtrackDirector {
   }
 
   ambientFor(location) {
-    const scene = this.project.owner(location, 'Scene');
+    const scene = this.project.owner(location, "Scene");
     const scenePath = componentPath(this.project, scene);
     const locationPath = componentPath(this.project, location);
     const byLayer = new Map();
@@ -105,26 +114,29 @@ export class SoundtrackDirector {
       for (const event of this.locations.get(path) ?? []) {
         const { layer, milestone, volume, pan } = event.attrs;
         if (milestone && !this.score.isMilestoneActive(milestone)) continue;
-        const name = layer || path + '#' + event.index;
+        const name = layer || path + "#" + event.index;
         if (event.clipKey) {
           byLayer.set(name, {
             clipKey: event.clipKey,
-            loop: event.attrs.loop !== 'false',
+            loop: event.attrs.loop !== "false",
             volume: Number(volume ?? 1),
-            pan: Number(pan ?? .5),
+            pan: Number(pan ?? 0.5),
           });
         } else if (layer && byLayer.has(name)) {
-          Object.assign(byLayer.get(name), { volume: Number(volume ?? 1), pan: Number(pan ?? .5) });
+          Object.assign(byLayer.get(name), {
+            volume: Number(volume ?? 1),
+            pan: Number(pan ?? 0.5),
+          });
         }
       }
     }
     return byLayer;
   }
 
-  syncLocation(locationGuid, seconds = .01, force = false) {
+  syncLocation(locationGuid, seconds = 0.01, force = false) {
     if (!this.running || (!force && locationGuid === this.locationKey)) return;
     const location = this.project.get(locationGuid);
-    if (locationGuid && location?.type !== 'SceneLocation') return;
+    if (locationGuid && location?.type !== "SceneLocation") return;
     this.locationKey = locationGuid;
     const byLayer = location ? this.ambientFor(location) : new Map();
 
@@ -138,8 +150,14 @@ export class SoundtrackDirector {
       const gain = trackGain(settings.volume);
       const pan = settings.pan;
       const previous = this.layers.get(layer);
-      if (previous?.clipKey === settings.clipKey && previous.loop === settings.loop) {
-        if (previous.handle && (previous.gain !== gain || previous.pan !== pan)) {
+      if (
+        previous?.clipKey === settings.clipKey &&
+        previous.loop === settings.loop
+      ) {
+        if (
+          previous.handle &&
+          (previous.gain !== gain || previous.pan !== pan)
+        ) {
           this.ramp(previous.handle, gain, pan, seconds);
         }
         Object.assign(previous, { gain, pan, seconds });
@@ -149,10 +167,10 @@ export class SoundtrackDirector {
       this.fadeOut(previous?.handle, seconds);
       const entry = { ...settings, gain, seconds, handle: null };
       this.layers.set(layer, entry);
-      this.startAmbient(layer, entry).catch(error => {
+      this.startAmbient(layer, entry).catch((error) => {
         if (this.layers.get(layer) !== entry) return;
         this.layers.delete(layer);
-        console.warn('环境音未播放', error);
+        console.warn("环境音未播放", error);
       });
     }
   }
@@ -164,7 +182,7 @@ export class SoundtrackDirector {
       volume: entry.seconds ? 0 : entry.gain,
       pan: entry.pan,
       loop: entry.loop,
-      offset: Math.random() * buffer.duration / 2,
+      offset: (Math.random() * buffer.duration) / 2,
       shouldPlay: () => this.layers.get(layer) === entry,
     });
     if (!handle) return;
@@ -177,29 +195,41 @@ export class SoundtrackDirector {
   }
 
   playGraphic(node, state, navigation) {
-    if (!this.running || node?.attrs.soundtrackEnabled !== 'true' || this.effects.size >= SFX_LIMIT) return;
-    const owner = this.project.owner(node, 'Card');
-    const location = this.project.owner(node, 'SceneLocation');
+    if (
+      !this.running ||
+      node?.attrs.soundtrackEnabled !== "true" ||
+      this.effects.size >= SFX_LIMIT
+    )
+      return;
+    const owner = this.project.owner(node, "Card");
+    const location = this.project.owner(node, "SceneLocation");
     const cardGuid = owner?.attrs.guid;
     const locationGuid = location?.attrs.guid;
     if (!locationGuid || !state.inPlay.has(cardGuid)) return;
-    if (locationGuid !== state.locations.get(cardGuid) &&
-        !(navigation?.card === cardGuid && locationGuid === navigation.destination)) return;
+    if (
+      locationGuid !== state.locations.get(cardGuid) &&
+      !(
+        navigation?.card === cardGuid && locationGuid === navigation.destination
+      )
+    )
+      return;
 
     const event = this.animations.get(componentPath(this.project, node));
     if (!event?.clipKey) return;
     const slot = {};
     this.effects.add(slot);
-    this.bank.play(event.clipKey, {
-      volume: trackGain(Number(event.attrs.volume ?? 1)),
-      pan: Number(event.attrs.pan ?? .5),
-      when: Number(event.attrs.startDelay ?? 0),
-      shouldPlay: () => this.effects.has(slot),
-      onEnd: () => this.effects.delete(slot),
-    }).catch(error => {
-      this.effects.delete(slot);
-      console.warn('动画音效未播放', error);
-    });
+    this.bank
+      .play(event.clipKey, {
+        volume: trackGain(Number(event.attrs.volume ?? 1)),
+        pan: Number(event.attrs.pan ?? 0.5),
+        when: Number(event.attrs.startDelay ?? 0),
+        shouldPlay: () => this.effects.has(slot),
+        onEnd: () => this.effects.delete(slot),
+      })
+      .catch((error) => {
+        this.effects.delete(slot);
+        console.warn("动画音效未播放", error);
+      });
   }
 
   playInterface(type) {
@@ -212,13 +242,16 @@ export class SoundtrackDirector {
     const serial = ++this.interfaceSerial;
     this.interfaceHandle?.stop();
     this.interfaceHandle = null;
-    this.bank.play(event.clipKey, {
-      volume: trackGain(Number(event.attrs.volume ?? 1)),
-      pan: Number(event.attrs.pan ?? .5),
-      shouldPlay: () => serial === this.interfaceSerial,
-    }).then(handle => {
-      if (serial === this.interfaceSerial) this.interfaceHandle = handle;
-      else handle?.stop();
-    }).catch(error => console.warn('界面声音未播放', error));
+    this.bank
+      .play(event.clipKey, {
+        volume: trackGain(Number(event.attrs.volume ?? 1)),
+        pan: Number(event.attrs.pan ?? 0.5),
+        shouldPlay: () => serial === this.interfaceSerial,
+      })
+      .then((handle) => {
+        if (serial === this.interfaceSerial) this.interfaceHandle = handle;
+        else handle?.stop();
+      })
+      .catch((error) => console.warn("界面声音未播放", error));
   }
 }
