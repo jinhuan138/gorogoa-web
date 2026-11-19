@@ -20,11 +20,13 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: npm ci
+      - run: npm run format:check
+      - run: npm run test:ui
       - run: npm run check:codecs
       - run: npm run check:assets
-      - run: node tools/check-prologue.mjs
-      - run: node tools/check-prologue.mjs --ending
-      - run: node tools/check-prologue.mjs --chapter-menu
+      - run: node tools/checks/check-prologue.mjs
+      - run: node tools/checks/check-prologue.mjs --ending
+      - run: node tools/checks/check-prologue.mjs --chapter-menu
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

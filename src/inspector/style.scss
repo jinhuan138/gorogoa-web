@@ -1,0 +1,134 @@
+:root {
+  color-scheme: light;
+  font-family: "Microsoft YaHei", system-ui, sans-serif;
+  background: #eee9df;
+  color: #333a39;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1200px;
+  padding: 40px 28px 64px;
+  margin: auto;
+}
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: #757c6c;
+}
+h1 {
+  font-size: clamp(25px, 4vw, 38px);
+  font-weight: 500;
+  margin: 10px 0;
+}
+.intro,
+details p {
+  line-height: 1.8;
+  color: #626861;
+  font-size: 14px;
+}
+#status {
+  min-height: 24px;
+  font-size: 13px;
+  color: #69725c;
+}
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  color: #626861;
+}
+.search {
+  flex: 1;
+  min-width: 160px;
+}
+.item {
+  flex: 2;
+  min-width: 220px;
+}
+input,
+select,
+button {
+  border: 1px solid #c9c9bb;
+  border-radius: 5px;
+  background: #faf8f2;
+  padding: 10px;
+  color: #333a39;
+  font: inherit;
+  min-width: 0;
+
+  &:focus-visible {
+    outline: 2px solid #6f7b62;
+    outline-offset: 2px;
+  }
+}
+button {
+  cursor: pointer;
+  font-size: 13px;
+}
+figure {
+  margin: 0;
+}
+#stage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  background-color: #d4d0c7;
+  background-image: conic-gradient(
+    #bebeb4 25%,
+    transparent 0 50%,
+    #bebeb4 0 75%,
+    transparent 0
+  );
+  background-size: 24px 24px;
+  border-radius: 8px;
+  padding: 24px;
+  overflow: auto;
+  &.dark {
+    background: #222a29;
+  }
+}
+canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
+figcaption {
+  overflow-wrap: anywhere;
+  padding: 12px 0 20px;
+  font-size: 12px;
+  color: #626861;
+  line-height: 1.7;
+}
+details {
+  border-top: 1px solid #cccbbd;
+  padding-top: 18px;
+}
+summary {
+  cursor: pointer;
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  main {
+    padding: 22px 16px;
+  }
+  #stage {
+    padding: 10px;
+  }
+  .toolbar label {
+    flex: 1 1 100%;
+  }
+}

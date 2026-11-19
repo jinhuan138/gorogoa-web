@@ -13,16 +13,29 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "check:codecs": "node tools/check-texture-codecs.mjs",
-    "check:assets": "node tools/check-assets.mjs",
-    "check:project": "node tools/check-project.mjs",
-    "check:camera": "node tools/check-camera.mjs",
-    "check:renderer": "node tools/check-renderer.mjs",
-    "check:animation": "node tools/check-animation.mjs",
-    "check:state": "node tools/check-state.mjs",
-    "check:storage": "node tools/check-storage.mjs"
+    "check:codecs": "node tools/checks/check-texture-codecs.mjs",
+    "check:assets": "node tools/checks/check-assets.mjs",
+    "check:project": "node tools/checks/check-project.mjs",
+    "check:camera": "node tools/checks/check-camera.mjs",
+    "check:renderer": "node tools/checks/check-renderer.mjs",
+    "check:animation": "node tools/checks/check-animation.mjs",
+    "check:state": "node tools/checks/check-state.mjs",
+    "check:storage": "node tools/checks/check-storage.mjs",
+    "test": "vitest run --config vitest.config.js",
+    "test:ui": "vitest run tests/ui.test.js --config vitest.config.js",
+    "format": "prettier --write src tools tests *.html *.js package.json .github/workflows/pages.yml",
+    "format:check": "prettier --check src tools tests *.html *.js package.json .github/workflows/pages.yml"
   },
   "devDependencies": {
-    "vite": "8.3.6"
+    "@vitejs/plugin-vue": "6.0.11",
+    "@vue/test-utils": "2.4.6",
+    "happy-dom": "21.0.4",
+    "prettier": "3.6.2",
+    "sass-embedded": "1.108.2",
+    "vite": "8.3.6",
+    "vitest": "4.1.12"
+  },
+  "dependencies": {
+    "vue": "3.5.45"
   }
 }

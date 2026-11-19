@@ -1,0 +1,261 @@
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+const root = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../..",
+  ),
+  game = "E:/SteamLibrary/steamapps/common/Gorogoa/Gorogoa_Data",
+  assets = JSON.parse(
+    fs.readFileSync(path.join(root, "work/asset-inventory.json")),
+  ),
+  bundle = JSON.parse(
+    fs.readFileSync(path.join(root, "work/bundle-inventory.json")),
+  ),
+  fd = fs.openSync(path.join(root, "work/bundle-data.bin"), "r");
+const hash = (data) => crypto.createHash("sha256").update(data).digest("hex");
+const clips = [],
+  failures = [];
+try {
+  for (const asset of assets) {
+    const member = bundle.members.find((m) => m.name === asset.name);
+    for (const item of asset.objects || []) {
+      if (item.classId !== 83) continue;
+      try {
+        const b = Buffer.alloc(item.size);
+        if (
+          fs.readSync(fd, b, 0, b.length, member.offset + item.offset) !==
+          b.length
+        )
+          throw new Error("音频元数据读取不完整");
+        let p = 0;
+        const int = () => {
+          const v = b.readInt32LE(p);
+          p += 4;
+          return v;
+        };
+        const str = () => {
+          const size = int();
+          if (size < 0 || p + size > b.length) throw new Error("字符串越界");
+          const value = b.toString("utf8", p, p + size);
+          p = Math.ceil((p + size) / 4) * 4;
+          return value;
+        };
+        const long = () => {
+          const v = b.readBigUInt64LE(p);
+          p += 8;
+          if (v > BigInt(Number.MAX_SAFE_INTEGER))
+            throw new Error("长整数超界");
+          return Number(v);
+        };
+        const name = str(),
+          loadType = int(),
+          channels = int(),
+          frequency = int(),
+          bitsPerSample = int(),
+          duration = b.readFloatLE(p);
+        p += 4;
+        const tracker = Boolean(b[p++]);
+        p = Math.ceil(p / 4) * 4;
+        const subsoundIndex = int(),
+          preload = Boolean(b[p++]),
+          background = Boolean(b[p++]),
+          legacy3D = Boolean(b[p++]);
+        p = Math.ceil(p / 4) * 4;
+        const source = str(),
+          offset = long(),
+          size = long(),
+          compressionFormat = int();
+        const streamName = source.split(/[\\/]/).at(-1),
+          stream = path.join(game, streamName);
+        if (!fs.existsSync(stream))
+          throw new Error(`流文件不存在:${streamName}`);
+        const streamFd = fs.openSync(stream, "r"),
+          data = Buffer.alloc(size);
+        try {
+          if (fs.readSync(streamFd, data, 0, size, offset) !== size)
+            throw new Error("流读取不完整");
+        } finally {
+          fs.closeSync(streamFd);
+        }
+        const signature = data.toString("ascii", 0, 4),
+          header =
+            signature === "FSB5"
+              ? {
+                  version: data.readUInt32LE(4),
+                  samples: data.readUInt32LE(8),
+                  sampleHeadersSize: data.readUInt32LE(12),
+                  nameTableSize: data.readUInt32LE(16),
+                  dataSize: data.readUInt32LE(20),
+                  mode: data.readUInt32LE(24),
+                  headerHex: data
+                    .subarray(0, Math.min(size, 96))
+                    .toString("hex"),
+                }
+              : null;
+        clips.push({
+          key: `${asset.name}/${item.pathId}`,
+          asset: asset.name,
+          pathId: item.pathId,
+          name,
+          loadType,
+          channels,
+          frequency,
+          bitsPerSample,
+          duration,
+          tracker,
+          subsoundIndex,
+          preload,
+          background,
+          legacy3D,
+          source,
+          stream,
+          offset,
+          size,
+          compressionFormat,
+          signature,
+          header,
+          metadataSha256: hash(b),
+          dataSha256: hash(data),
+        });
+      } catch (error) {
+        failures.push({
+          asset: asset.name,
+          pathId: item.pathId,
+          error: error.message,
+        });
+      }
+    }
+  }
+} finally {
+  fs.closeSync(fd);
+}
+const manifest = {
+  sourceBundleSha256: bundle.sha256,
+  scope:
+    "Unity2017 AudioClip metadata and raw stream headers only; no decoder executed",
+  clips,
+  failures,
+};
+fs.writeFileSync(
+  path.join(root, "work/audio-inventory.json"),
+  JSON.stringify(manifest, null, 2),
+);
+const groups = {};
+for (const c of clips) {
+  const key = `${c.signature}/mode${c.header?.mode}/unity${c.compressionFormat}`;
+  groups[key] = (groups[key] || 0) + 1;
+}
+console.log(
+  JSON.stringify({
+    clips: clips.length,
+    groups,
+    failures,
+    samples: clips.slice(0, 2),
+  }),
+);
+
+// 正式版SoundtrackEntry原始时序配置；不把工程遗留SoundClip路径猜映射为新声音。
+const textManifest = JSON.parse(
+    fs.readFileSync(path.join(root, "work/export-manifest.json")),
+  ),
+  resourceMap = JSON.parse(
+    fs.readFileSync(path.join(root, "work/resource-map.json")),
+  ),
+  audioInventory = JSON.parse(
+    fs.readFileSync(path.join(root, "work/audio-inventory.json")),
+  );
+const paths = new Map(
+  resourceMap.resources
+    .filter((r) => r.fileId === 5)
+    .map((r) => [String(r.pathId), r.name]),
+);
+const events = [],
+  eventSources = [],
+  missingEventClips = [];
+const xmlValue = (value) =>
+  value.replace(/&(?:amp|lt|gt|quot|apos|#\d+|#x[\da-f]+);/gi, (entity) => {
+    const known = {
+      "&amp;": "&",
+      "&lt;": "<",
+      "&gt;": ">",
+      "&quot;": '"',
+      "&apos;": "'",
+    };
+    return (
+      known[entity] ??
+      String.fromCodePoint(
+        entity.startsWith("&#x")
+          ? parseInt(entity.slice(3, -1), 16)
+          : Number(entity.slice(2, -1)),
+      )
+    );
+  });
+for (const text of textManifest.texts) {
+  const resourcePath = paths.get(text.key.split("/")[1]);
+  if (!resourcePath?.startsWith("soundtrack/")) continue;
+  const bytes = fs.readFileSync(path.join(root, text.file)),
+    xml = bytes.toString("utf8").replace(/<!--[\s\S]*?-->/g, "");
+  if (!/<Soundtrack(?:\s|>)/.test(xml)) continue;
+  let count = 0;
+  for (const match of xml.matchAll(/<SoundtrackEntry\b([^>]*?)\/\s*>/g)) {
+    const attrs = {};
+    for (const attribute of match[1].matchAll(/([\w:-]+)\s*=\s*"([^"]*)"/g))
+      attrs[attribute[1]] = xmlValue(attribute[2]);
+    const name = attrs.soundFile
+      ?.split(/[\\/]/)
+      .at(-1)
+      .replace(/\.[^.]*$/, "");
+    const clips = name
+      ? audioInventory.clips.filter(
+          (c) => c.name.toLowerCase() === name.toLowerCase(),
+        )
+      : [];
+    const entry = {
+      source: resourcePath,
+      index: count++,
+      attrs,
+      clipName: clips.length === 1 ? clips[0].name : null,
+      clipKey: clips.length === 1 ? clips[0].key : null,
+    };
+    events.push(entry);
+    if (name && clips.length !== 1)
+      missingEventClips.push({
+        source: resourcePath,
+        soundFile: attrs.soundFile,
+        matches: clips.length,
+      });
+  }
+  eventSources.push({ resourcePath, sha256: hash(bytes), count });
+}
+const eventManifest = {
+  scope:
+    "Original formal SoundtrackEntry attributes; numeric strings preserved; no playback semantics inferred",
+  sources: eventSources,
+  events,
+  missingEventClips,
+};
+fs.writeFileSync(
+  path.join(root, "work/audio-events.json"),
+  JSON.stringify(eventManifest, null, 2),
+);
+fs.mkdirSync(path.join(root, "public/assets/audio"), { recursive: true });
+fs.writeFileSync(
+  path.join(root, "public/assets/audio/events.json"),
+  JSON.stringify(eventManifest, null, 2),
+);
+console.log(
+  JSON.stringify({
+    soundtrackSources: eventSources.length,
+    events: events.length,
+    missingEventClips: missingEventClips.length,
+    opening: events
+      .filter(
+        (e) =>
+          e.attrs.anim?.includes("sd_arrives") ||
+          e.clipName === "Amb_Chapter1_City_Opening",
+      )
+      .map((e) => ({ source: e.source, attrs: e.attrs, clipName: e.clipName })),
+  }),
+);

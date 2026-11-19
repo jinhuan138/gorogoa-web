@@ -1,11 +1,13 @@
 import { resolve } from "node:path";
-import { stagePages } from "./tools/stage-pages.mjs";
+import vue from "@vitejs/plugin-vue";
+import { stagePages } from "./tools/pages/stage-pages.mjs";
 
 let rootDir;
 export default {
   base: "./",
   build: { outDir: "dist", emptyOutDir: true, copyPublicDir: false },
   plugins: [
+    vue(),
     {
       name: "gorogoa-pages-assets",
       apply: "build",
