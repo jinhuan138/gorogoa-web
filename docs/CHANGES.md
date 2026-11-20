@@ -1,6 +1,10 @@
-# 本阶段新增文件说明
+# 变更记录
 
-本阶段所有文件均位于 D:\jinhuan\gorogoa-web；不修改原游戏和其他项目。
+按阶段从早到晚记录。各节如实保留当时的状态，后文更新覆盖前文；当前状态以 README.md 为准。所有改动只涉及本项目，不修改原游戏或其他项目。
+
+## 2026-11-06 初始分析与素材核对
+
+本阶段的依赖、工作流和入口已在后续阶段调整：`package-lock.json` 改为 `pnpm-lock.yaml`，素材核对页移至 `assets.html`，样式改为 Sass，工具归入 `tools/`。
 
 | 文件 | 用途 |
 |---|---|
@@ -33,23 +37,21 @@
 | work/*.json、work/bundle-data.bin | 本地分析目录、图集来源、展开资源与成员名录 |
 | work/extracted-text/*.txt | 236 个原始文本资源的字节导出 |
 
-src/engine 和 src/chapters 目录已预留，没有写入未经验证的游戏逻辑。
+当时 src/engine 和 src/chapters 目录仅做预留，没有写入未经验证的游戏逻辑。`work/serve.mjs` 是本机只读静态预览服务，仅监听 127.0.0.1:4178，不构建、不编译，也不访问项目外的文件。
 
-补充：`work/serve.mjs` 是本机只读静态预览服务，仅监听 127.0.0.1:4178，不构建、不编译，也不访问项目外文件。
+## 2026-11-07 游戏入口与核心模型
 
-# 2026-11-07 连续移植进展
+新增 src/engine/model/project.js（原版逻辑树索引）、camera.js（原版相机与视差）、atlas.js（图集与原图裁切）、renderer.js（场景合成）、animation.js（播放列表、关键帧与插值）、state.js（初始状态、谓词、转移和动画门控）和 storage.js（完整进度快照与校验）。新增 src/game/runtime.js 和 game.css 作为游戏入口；index.html 切换为游戏，旧素材工具移至 assets.html。
 
-新增：src/engine/model/project.js（原版逻辑树索引）、camera.js（原版相机/视差）、atlas.js（图集与原图裁切）、renderer.js（实际场景合成）、animation.js（播放列表/关键帧/插值）、state.js（初始状态、谓词、转移和动画门控）、storage.js（完整进度快照与校验）。新增src/game/runtime.js和game.css为真实游戏入口；index.html切换为游戏，旧素材工具移为assets.html。
+新增分析与测试：tools/extract/prepare-runtime.ps1、inspect-cil.mjs、check-cil.mjs、check-project.mjs、check-camera.mjs、check-renderer.mjs、check-animation.mjs、check-state.mjs、check-storage.mjs，以及 runtime-project、runtime-chapter1-save、runtime-manifest 派生数据。第一章存档明确作为检查点，没有误当新游戏的起点。
 
-新增分析/测试：tools/extract/prepare-runtime.ps1、inspect-cil.mjs、check-cil.mjs、check-project.mjs、check-camera.mjs、check-renderer.mjs、check-animation.mjs、check-state.mjs、check-storage.mjs，以及runtime-project/runtime-chapter1-save/runtime-manifest派生数据。章节1存档明确为检查点，未误当新游戏起点。
+已按真实 XML 逐元素、属性和顺序核对 116066 个元素、358627 个属性。修复了 PowerShell 中 XML name 属性遮蔽标签、CIL 非有限数丢失、OffsetViewpoint 收缩公式、动画激活时钟、动画可打断候选顺序、自循环重新激活和 hover 热点缓存等问题。
 
-已按真实XML逐元素/属性/顺序核对116066个元素、358627个属性。已修复PowerShell的XML name属性遮蔽标签、CIL非有限数丢失、OffsetViewpoint收缩公式、动画激活时钟、动画可打断候选顺序、自循环重激活和hover热点缓存。
+内置浏览器中已显示原版城市合成和 10 部件角色动画，并实际点击返回 window 位置。当时全部检查均未执行构建，也未提交、推送或发布。
 
-内置浏览器已看到原版城市合成与10部件角色动画，并实际点击返回到window位置。窗前linked场景、翻书sprite序列及卡片捕获继续实现，尚不能声称第一关已通关。全部检查均未执行build/编译；未Git提交、推送或发布。
+同日补记：已在内置浏览器中走通城市入场、返回窗前、孩子翻书与思考，直至出现下一个热点，窗内的原版城市背景和孩子逐帧图像均已显示。src/engine/model/links.js 和 check-links.mjs 恢复了 OVER/UNDER 捕获、分离和合法叠合；src/engine/model/holes.js 按原版条件解析孔洞下层候选。游戏输入已接入 LinkModel.release/place，存档新增 captureSides，并在无过渡、无未完成动画的稳定帧保存到浏览器本地。
 
-游戏入口进展补记：已在内置浏览器实际走通城市入场、返回窗前、孩子翻书与思考、出现下一热点；窗内原版城市背景及孩子逐帧图像已显示。src/engine/model/links.js和check-links.mjs恢复OVER/UNDER捕获、分离和合法叠合。src/engine/model/holes.js按原版条件解析孔洞下层候选。Game输入已接LinkModel.release/place，存档新增captureSides并接浏览器本地保存（仅在无过渡/无未完动画的稳定帧保存）。完整通关与声音仍未完成，尚不能声称原版一致。
-
-# 2026-11-10 连续移植进展
+## 2026-11-10 棋盘、检查点与声音
 
 | 文件 | 变化 |
 |---|---|
@@ -60,7 +62,7 @@ src/engine 和 src/chapters 目录已预留，没有写入未经验证的游戏�
 | src/engine/audio/audio.js、src/engine/audio/soundtrack.js、public/assets/audio/ | 原声环境、动画、界面音，291 个重封装 Ogg、755 条事件 |
 | tools/checks/check-prologue.mjs | 用真实游戏入口回归城市、书和碗、拆卡、屋顶叠合、树枝与碗对齐、拾取第一颗果实和保存 |
 
-## 2026-11-11
+## 2026-11-11 完整通关、结局与片尾
 
 | 文件 | 变化 |
 |---|---|
@@ -77,11 +79,11 @@ src/engine 和 src/chapters 目录已预留，没有写入未经验证的游戏�
 | vite.config.js、tools/pages/stage-pages.mjs | 校验并复制正式版图集、界面、音频和数据，保留供本机核对的完整导出 |
 | .github/workflows/pages.yml | 手动发布前加入完整通关和尾声检查点校验 |
 
-完整通关回归使用模拟时钟与指针驱动游戏入口。内置浏览器实际确认了窗景、暂停、章节确认、声音启用、继续游戏、结局渲染与片尾翻页。未执行构建、编译、Git 提交、推送或发布。
+完整通关回归用模拟时钟和指针驱动游戏入口。内置浏览器中实际确认了窗景、暂停、章节确认、声音启用、继续游戏、结局渲染和片尾翻页。当时未执行构建，也未提交、推送或发布。
 
 ## 2026-11-19 Vue、目录与 H5 重构
 
-- 格式化与去重基线单独提交为 `07fb867`；本阶段重构在自动验收后按用户要求单独提交，尚未推送或发布。
+- 格式化与去重基线单独提交为 `07fb867`，本阶段重构在自动验收后单独提交为 `c636f41`。
 - `src/ui/` 使用 Vue SFC 管理设置、章节、语言、制作人员名单和热点；`src/game/` 保留运行时及稳定画面宿主，渲染、音频、模型分别归入 `src/engine/render/`、`audio/`、`model/`。
 - `src/i18n/`、`src/resources/` 集中语言与资源辅助逻辑；工具归入 `tools/checks/`、`extract/`、`pages/`，同步入口、导入、字体与工作流路径。
 - 游戏和素材核对页样式分别迁移为 `src/styles/game.scss`、`src/inspector/style.scss`；使用 `sass-embedded` 嵌套整理，不增加独立动画库。
@@ -95,3 +97,19 @@ src/engine 和 src/chapters 目录已预留，没有写入未经验证的游戏�
 - 真实触摸拖拽将 Canvas 的隐式捕获转交棋盘时，Canvas 的 `lostpointercapture` 冒泡曾误取消拆卡；现在仅处理棋盘自身失去捕获，继续保留实际取消手势和棋盘失去捕获时的归位。新增捕获转交回归先复现失败，修复后完整通关及 9 项界面测试通过。
 - 最终构建通过无头 Chromium 151.0.7922.34 四视口验收：320×568、390×844、844×390、1280×800；实际触摸走序章、拆卡并保存，核对旋转、暂停恢复、18 种语言及 RTL、制作人员名单、真实音频解锁与解码、全屏状态和 reduced-motion。手机/桌面素材核对页、结局 WebGL 及片尾前后翻页通过，截图与结果保留在被忽略的 `work/verification/`。
 - 浏览器验收仅排除已知 `favicon.ico` 的 404，未发现其他控制台错误或资源请求失败；未操作用户桌面，未新增浏览器测试依赖。iOS/Android 实机、安全区和真实地址栏变化仍未验证，逐场景音画对照仍待验收。
+
+## 2026-11-19 至 11-20 界面音效、加载优化、动画分层与自动发布
+
+| 文件 | 变化 |
+|---|---|
+| src/engine/audio/interface.js、src/ui/SettingsPanel.vue、src/ui/useGame.js、tests/interface-audio.test.js | 按原版 Startup 绑定补齐菜单与热点音效：4 个并发音源，每组洗牌后循环，随机音量与音高，调节音量时播放 slide 音效（`2966820`） |
+| public/assets/data/runtime-project.json、runtime-manifest.json、tools/extract/prepare-runtime.ps1、tools/checks/check-project.mjs | 运行时逻辑树剔除 `deletionLog`，原始体积由 17.0 MB 降至 13.6 MB，gzip 由 2.66 MB 降至 1.74 MB；`-VerifyOnly` 与原版 XML 逐节点核对一致 |
+| src/resources/json.js、src/resources/startup-timing.js、src/engine/model/project.js | 启动数据并行加载；地址带 `?timing` 时输出启动各阶段和 JSON 下载、解析耗时 |
+| src/game/runtime.js、src/engine/render/atlas.js、src/engine/render/renderer.js、src/ui/Hotspots.vue | 页面转入后台时冻结时钟并暂停音频；热点悬停、按下或聚焦时按导航目标有限预取图集；移动端画布像素比上限为 2（`8d7679f`） |
+| src/i18n/index.js、src/i18n/messages.js、index.html、src/ui/useSettings.js | 游戏名称随语言显示为“画中世界”“畫中世界”或“Gorogoa”；首次运行按浏览器语言偏好选择，已保存的手动设置优先 |
+| package.json、pnpm-lock.yaml | 迁移到 pnpm，删除 `package-lock.json`；新增 Anime.js 4.5.0 |
+| src/game/motion.js、src/game/timeline.js、src/engine/model/board.js、src/engine/model/navigation.js、tests/motion.test.js | 核心运动收拢为纯采样控制器，直接以 elapsed 调用原版采样函数；Anime.js 只编排启动页和片尾的淡入淡出，由冻结时钟 seek 推进（`610dec6`） |
+| src/game/screens/startup.js、src/game/screens/credits.js、tests/ui.test.js | 启动页与片尾改用界面时间线，不再需要显式取消 |
+| .github/workflows/pages.yml | 改用 pnpm，增加推送到 `main` 时自动构建部署（`f2bed84`）；修复 Prettier 差异后，`0c6e3d5` 的远端构建与部署成功 |
+
+发布集合仍为 1036 项、732 张贴图、291 段音频；因运行时逻辑树缩小，静态资源降至 646,766,297 字节。
