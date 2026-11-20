@@ -35,6 +35,7 @@ export class StartupScreen {
       now = () => performance.now() / 1000,
       isPaused = () => false,
       resume = () => bank.resume(),
+      onProgress = () => {},
     } = {},
   ) {
     this.button = button;
@@ -60,8 +61,23 @@ export class StartupScreen {
       image.draggable = false;
       return image;
     });
-    Promise.allSettled(this.images.map((image) => image.decode())).then(() => {
-      this.started = this.now();
+    const total = this.images.length;
+    let completed = 0;
+    let failed = 0;
+    const reportImage = (loaded) => {
+      if (loaded) completed++;
+      else failed++;
+      if (this.active) onProgress(completed, total, failed);
+    };
+    Promise.allSettled(
+      this.images.map((image) =>
+        image.decode().then(
+          () => reportImage(true),
+          () => reportImage(false),
+        ),
+      ),
+    ).then(() => {
+      if (this.active) this.started = this.now();
     });
   }
 

@@ -11,6 +11,39 @@ provide("gameUi", props.model);
 
 <template>
   <button id="startup" type="button" :aria-label="t('startup')"></button>
+  <section
+    id="startup-progress"
+    role="status"
+    :hidden="
+      !ui.startupActive ||
+      !ui.loading ||
+      ui.loadFailed ||
+      !ui.startupProgress.length
+    "
+    :dir="settings.language === 'ar' ? 'rtl' : 'ltr'"
+  >
+    <div
+      v-for="stage in ui.startupProgress"
+      :key="stage.key"
+      class="startup-progress-stage"
+      :data-stage="stage.key"
+    >
+      <div class="startup-progress-label">
+        <span>{{ t(stage.key) }}</span>
+        <span>
+          {{ stage.total === null ? "—" : `${stage.completed}/${stage.total}` }}
+          <span v-if="stage.failed">
+            · {{ t("loadingFailed") }} {{ stage.failed }}</span
+          >
+        </span>
+      </div>
+      <progress
+        :aria-label="t(stage.key)"
+        :max="stage.total || 1"
+        :value="stage.total === null ? undefined : stage.completed"
+      ></progress>
+    </div>
+  </section>
   <main id="game-shell" :inert="ui.startupActive">
     <h1 class="sr-only">{{ t("gameName") }}</h1>
     <div

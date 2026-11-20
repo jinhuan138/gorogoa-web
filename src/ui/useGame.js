@@ -18,6 +18,7 @@ export function createGameUi() {
     const ui = shallowReactive({
       ready: false,
       startupActive: true,
+      startupProgress: [],
       paused: false,
       phase: "PROLOGUE",
       loading: true,

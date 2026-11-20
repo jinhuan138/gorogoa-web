@@ -859,7 +859,7 @@ const gameTranslations = {
     "이 장면으로 전환할 수 없습니다.",
   ],
 };
-export const translations = {
+const messages = {
   "zh-CN": simplified,
   "zh-TW": traditional,
   en: english,
@@ -878,6 +878,51 @@ export const translations = {
     ]),
   ),
 };
+const startupKeys = [
+  "loadingLogos",
+  "loadingData",
+  "loadingScene",
+  "loadingFailed",
+];
+const startupTranslations = {
+  "zh-CN": ["启动图片", "游戏数据", "画面图集", "失败"],
+  "zh-TW": ["啟動圖片", "遊戲資料", "畫面圖集", "失敗"],
+  en: ["Startup images", "Game data", "Scene textures", "Failed"],
+  ja: ["起動画面", "ゲームデータ", "シーン画像", "失敗"],
+  es: ["Imágenes iniciales", "Datos del juego", "Texturas de escena", "Error"],
+  "es-MX": [
+    "Imágenes iniciales",
+    "Datos del juego",
+    "Texturas de escena",
+    "Error",
+  ],
+  de: ["Startbilder", "Spieldaten", "Szenentexturen", "Fehlgeschlagen"],
+  fr: ["Images de démarrage", "Données du jeu", "Textures de scène", "Échec"],
+  it: ["Immagini iniziali", "Dati di gioco", "Texture della scena", "Errore"],
+  pl: ["Obrazy startowe", "Dane gry", "Tekstury sceny", "Błąd"],
+  "pt-BR": ["Imagens iniciais", "Dados do jogo", "Texturas da cena", "Falha"],
+  tr: ["Başlangıç görselleri", "Oyun verileri", "Sahne dokuları", "Başarısız"],
+  th: ["ภาพเริ่มต้น", "ข้อมูลเกม", "พื้นผิวฉาก", "ล้มเหลว"],
+  nl: ["Startafbeeldingen", "Spelgegevens", "Scènetexturen", "Mislukt"],
+  ru: ["Стартовые изображения", "Данные игры", "Текстуры сцены", "Ошибка"],
+  sv: ["Startbilder", "Speldata", "Scentexturer", "Misslyckades"],
+  ar: ["صور البدء", "بيانات اللعبة", "صور المشهد", "فشل"],
+  ko: ["시작 이미지", "게임 데이터", "장면 텍스처", "실패"],
+};
+export const translations = Object.fromEntries(
+  Object.entries(messages).map(([code, labels]) => [
+    code,
+    {
+      ...labels,
+      ...Object.fromEntries(
+        startupKeys.map((key, index) => [
+          key,
+          startupTranslations[code][index],
+        ]),
+      ),
+    },
+  ]),
+);
 export const languages = {
   "zh-CN": "简体中文",
   "zh-TW": "繁體中文",

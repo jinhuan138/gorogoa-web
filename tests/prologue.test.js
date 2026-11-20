@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { test, afterEach, vi } from "vitest";
-import { mount } from "@vue/test-utils";
+import { mount, flushPromises } from "@vue/test-utils";
 import { nextTick } from "vue";
 import App from "../src/ui/App.vue";
 import { createGameUi } from "../src/ui/useGame.js";
@@ -249,8 +249,7 @@ test(mode, async () => {
     },
     siteUrl,
   );
-  await Promise.resolve();
-  await Promise.resolve();
+  await flushPromises();
   browser.time = originalTime + 2;
   await startupProbe.enableMusic();
   assert.deepEqual(audioLog, [["resume"], ["play", STARTUP_MUSIC, "music", 2]]);

@@ -30,7 +30,7 @@ import { RuntimeState } from "../engine/model/state.js";
 import { ProjectScripts } from "../engine/model/scripts.js";
 import { EndingScreen } from "./screens/ending.js";
 import { EndingCredits } from "./screens/credits.js";
-import { StartupScreen } from "./screens/startup.js";
+import { StartupScreen, STARTUP_SLIDES } from "./screens/startup.js";
 import { CARD_SIZE } from "../engine/render/camera.js";
 import {
   UI_STYLE_TEXTURES,
@@ -54,6 +54,9 @@ export async function startGame({
   boardFrame.width = boardFrame.height = canvas.width;
   const frameContext = boardFrame.getContext("2d");
   const board = document.getElementById("board");
+  const rotatedMobileStage = window.matchMedia(
+    "(pointer: coarse) and (orientation: portrait)",
+  );
   const endingCanvas = document.getElementById("ending");
   const pauseButton = document.getElementById("pause");
   const soundBank = new AudioBank({ baseUrl: document.baseURI });
@@ -64,6 +67,17 @@ export async function startGame({
   let hiddenAt = backgrounded ? performance.now() : null;
   let hiddenDuration = 0;
   let disposed = false;
+  ui.startupProgress = [
+    ["loadingLogos", STARTUP_SLIDES.length],
+    ["loadingData", 3],
+    ["loadingScene", null],
+  ].map(([key, total]) => ({ key, completed: 0, total, failed: 0 }));
+  function updateStartupProgress(key, completed, total, failed = 0) {
+    if (disposed || !ui.startupActive || ui.loadFailed) return;
+    ui.startupProgress = ui.startupProgress.map((stage) =>
+      stage.key === key ? { key, completed, total, failed } : stage,
+    );
+  }
   let frameRequest = null;
   let frameRunning = false;
   let uiSoundGeneration = 0;
@@ -102,6 +116,8 @@ export async function startGame({
     {
       now: () => pageNow() / 1000,
       isPaused: () => backgrounded || disposed,
+      onProgress: (completed, total, failed) =>
+        updateStartupProgress("loadingLogos", completed, total, failed),
       resume: async () => {
         await unlockBank(soundBank);
         await syncAudioBank(
@@ -233,10 +249,11 @@ export async function startGame({
   }
   function logicalPoint(event) {
     const rect = canvas.getBoundingClientRect();
-    return [
-      ((event.clientX - rect.left) / rect.width) * BOARD_SIZE,
-      ((event.clientY - rect.top) / rect.height) * BOARD_SIZE,
-    ];
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+    if (rotatedMobileStage.matches)
+      return [y * BOARD_SIZE, (1 - x) * BOARD_SIZE];
+    return [x * BOARD_SIZE, y * BOARD_SIZE];
   }
   function hitCard(point) {
     return cards()
@@ -947,6 +964,36 @@ export async function startGame({
           (url) => !renderer.atlas.images.has(url),
         );
         updateBoardCursor();
+        const sceneLoads = ui.loading
+          ? new Map(
+              [...activeTextureUrls]
+                .filter(
+                  (url) =>
+                    renderer.atlas.images.has(url) &&
+                    !renderer.atlas.pending.has(url),
+                )
+                .map((url) => [url, true]),
+            )
+          : null;
+        const onTextureLoaded = sceneLoads
+          ? (url, loaded) => {
+              if (state !== frameState) return;
+              sceneLoads.set(url, loaded);
+              const completed = [...sceneLoads.values()].filter(Boolean).length;
+              updateStartupProgress(
+                "loadingScene",
+                completed,
+                activeTextureUrls.length,
+                sceneLoads.size - completed,
+              );
+            }
+          : undefined;
+        if (sceneLoads)
+          updateStartupProgress(
+            "loadingScene",
+            sceneLoads.size,
+            activeTextureUrls.length,
+          );
         const entries = reports.map(({ card, report }) => ({
           card,
           report,
@@ -966,6 +1013,7 @@ export async function startGame({
               activeTextureUrls,
               rasterScale,
               report,
+              onTextureLoaded,
             });
           } finally {
             frameContext.restore();
@@ -1081,6 +1129,7 @@ export async function startGame({
   actions.disposeGame = () => {
     if (disposed) return;
     disposed = true;
+    ui.startupProgress = [];
     cancelPointer();
     if (frameRequest !== null) cancelAnimationFrame(frameRequest);
     frameRequest = null;
@@ -1098,11 +1147,23 @@ export async function startGame({
   };
   scheduleFrame();
   try {
-    const [{ project: loaded }, loadedManifest, atlases] = await Promise.all([
+    let dataCompleted = 0;
+    const dataRequests = [
       loadProject(),
       read("assets/manifest.json"),
       read("assets/data/atlases.json"),
-    ]);
+    ];
+    const [{ project: loaded }, loadedManifest, atlases] = await Promise.all(
+      dataRequests.map(async (request) => {
+        const result = await request;
+        updateStartupProgress(
+          "loadingData",
+          ++dataCompleted,
+          dataRequests.length,
+        );
+        return result;
+      }),
+    );
     if (disposed) return;
     markStartup("data-loaded");
     project = loaded;

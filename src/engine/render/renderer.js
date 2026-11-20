@@ -943,16 +943,25 @@ export class SceneRenderer {
       ]),
     ]);
     const images = new Map();
+    const progressUrls = options.onTextureLoaded ? new Set() : null;
     await Promise.all(
       leaves.map(async (item) => {
+        let loaded = false;
         try {
           images.set(item, await this.atlas.image(item.region));
+          loaded = true;
         } catch (error) {
           report.missing.push({
             kind: "image-load",
             source: item.source,
             reason: error.message,
           });
+        } finally {
+          const url = item.region.textureUrl;
+          if (progressUrls && !progressUrls.has(url)) {
+            progressUrls.add(url);
+            options.onTextureLoaded(url, loaded);
+          }
         }
       }),
     );

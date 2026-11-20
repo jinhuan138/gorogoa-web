@@ -16,6 +16,7 @@ import { AtlasStore } from "../src/engine/render/atlas.js";
 import { SceneRenderer } from "../src/engine/render/renderer.js";
 import { ProjectScripts } from "../src/engine/model/scripts.js";
 import { RuntimeState } from "../src/engine/model/state.js";
+import * as projectModel from "../src/engine/model/project.js";
 import { BOARD_SIZE } from "../src/engine/model/board.js";
 import { CARD_SIZE } from "../src/engine/render/camera.js";
 import { EndingScreen } from "../src/game/screens/ending.js";
@@ -618,6 +619,255 @@ async function firstHotspot() {
   return model.ui.hotspots[0];
 }
 
+const startupStage = (key) =>
+  model.ui.startupProgress.find((stage) => stage.key === key);
+const startupRow = (key) =>
+  element("startup-progress").querySelector(`[data-stage="${key}"]`);
+
+test("启动进度按实际数据任务完成数更新，不随等待时间虚增", async () => {
+  const fetch = globalThis.fetch;
+  let release;
+  vi.stubGlobal("fetch", async (url) => {
+    if (new URL(url).pathname.endsWith("/assets/manifest.json"))
+      await new Promise((resolve) => {
+        release = resolve;
+      });
+    return fetch(url);
+  });
+  const pending = bootRuntime();
+  await vi.waitFor(() => expect(startupStage("loadingData").completed).toBe(2));
+  await nextTick();
+  expect(element("startup-progress").hidden).toBe(false);
+  expect(startupRow("loadingData").textContent).toContain("2/3");
+  expect(startupRow("loadingData").querySelector("progress").value).toBe(2);
+  expect(
+    startupRow("loadingScene").querySelector("progress").hasAttribute("value"),
+  ).toBe(false);
+  browser.time += 60;
+  await browser.step(1, 0);
+  expect(startupStage("loadingData").completed).toBe(2);
+  expect(startupStage("loadingScene").total).toBeNull();
+  release();
+  await pending;
+  expect(startupStage("loadingData").completed).toBe(3);
+  await browser.step(1, 0);
+  const scene = startupStage("loadingScene");
+  expect(scene.total).toBeGreaterThan(0);
+  expect(scene.completed).toBe(scene.total);
+  expect(scene.failed).toBe(0);
+  await nextTick();
+  expect(model.ui.startupActive).toBe(true);
+  expect(element("startup-progress").hidden).toBe(true);
+  await browser.step(10);
+  expect(element("startup").hidden).toBe(true);
+});
+
+test("启动图片逐张解码更新进度，失败不计作成功，也不提前开始 Logo", async () => {
+  const decodes = [];
+  vi.spyOn(HTMLImageElement.prototype, "decode").mockImplementation(
+    () => new Promise((resolve, reject) => decodes.push({ resolve, reject })),
+  );
+  await bootRuntime();
+  expect(startupStage("loadingLogos")).toMatchObject({
+    completed: 0,
+    total: 3,
+    failed: 0,
+  });
+  decodes[1].resolve();
+  await flushPromises();
+  expect(startupRow("loadingLogos").textContent).toContain("1/3");
+  browser.time += 30;
+  await browser.step(1, 0);
+  expect(element("startup").childElementCount).toBe(0);
+  expect(startupStage("loadingLogos").completed).toBe(1);
+  decodes[0].reject(new Error("图像无法解码"));
+  await flushPromises();
+  expect(startupStage("loadingLogos")).toMatchObject({
+    completed: 1,
+    failed: 1,
+  });
+  expect(startupRow("loadingLogos").textContent).toContain("失败 1");
+  expect(startupRow("loadingLogos").querySelector("progress").value).toBe(1);
+  decodes[2].resolve();
+  await flushPromises();
+  expect(startupStage("loadingLogos")).toMatchObject({
+    completed: 2,
+    total: 3,
+    failed: 1,
+  });
+  await browser.step(1, 0.5);
+  expect(element("startup").firstElementChild.style.opacity).toBe("0.5");
+});
+
+test("首帧图集等待时进度可更新，后台解码完成后仍等实际绘制才隐藏", async () => {
+  await bootRuntime();
+  const decodes = new Map();
+  vi.spyOn(HTMLImageElement.prototype, "decode").mockImplementation(
+    function () {
+      return new Promise((resolve) => decodes.set(this.src, resolve));
+    },
+  );
+  await browser.step(23);
+  const pending = browser.step();
+  await vi.waitFor(() => expect(decodes.size).toBeGreaterThan(0));
+  await nextTick();
+  const total = startupStage("loadingScene").total;
+  expect(total).toBeGreaterThan(0);
+  expect(startupStage("loadingScene").completed).toBe(0);
+  expect(startupRow("loadingScene").querySelector("progress").max).toBe(total);
+  expect(element("startup-progress").hidden).toBe(false);
+  expect(browser.pendingFrame).toBe(false);
+  browser.setHidden(true);
+  for (const resolve of decodes.values()) resolve();
+  await pending;
+  await nextTick();
+  expect(startupStage("loadingScene").completed).toBe(total);
+  expect(model.ui.loading).toBe(true);
+  expect(element("startup-progress").hidden).toBe(false);
+  browser.time += 30;
+  browser.setHidden(false);
+  await browser.step(1, 0);
+  await nextTick();
+  expect(startupStage("loadingScene").completed).toBe(total);
+  expect(model.ui.loading).toBe(false);
+  expect(element("startup-progress").hidden).toBe(true);
+});
+
+test("启动中销毁会清理进度，迟到的数据与图片不再回写", async () => {
+  const fetch = globalThis.fetch;
+  let release;
+  vi.stubGlobal("fetch", async (url) => {
+    if (new URL(url).pathname.endsWith("runtime-project.json"))
+      await new Promise((resolve) => {
+        release = resolve;
+      });
+    return fetch(url);
+  });
+  const decodes = [];
+  vi.spyOn(HTMLImageElement.prototype, "decode").mockImplementation(
+    () => new Promise((resolve) => decodes.push(resolve)),
+  );
+  const pending = bootRuntime();
+  await vi.waitFor(() => expect(startupStage("loadingData").completed).toBe(2));
+  model.dispose();
+  await nextTick();
+  expect(model.ui.startupProgress).toEqual([]);
+  expect(element("startup-progress").hidden).toBe(true);
+  for (const resolve of decodes) resolve();
+  release();
+  await pending;
+  await flushPromises();
+  expect(model.ui.startupProgress).toEqual([]);
+  expect(model.ui.ready).toBe(false);
+  expect(browser.pendingFrame).toBe(false);
+  expect(browser.observerCount).toBe(0);
+});
+
+test("启动数据失败保留原错误提示，迟到任务不会把进度写成完成", async () => {
+  const loadProject = vi.spyOn(projectModel, "loadProject");
+  const fetch = globalThis.fetch;
+  let release;
+  vi.stubGlobal("fetch", async (url) => {
+    const path = new URL(url).pathname;
+    if (path.endsWith("/assets/manifest.json")) throw new Error("offline");
+    if (path.endsWith("runtime-project.json"))
+      await new Promise((resolve) => {
+        release = resolve;
+      });
+    return fetch(url);
+  });
+  await bootRuntime();
+  const progress = model.ui.startupProgress;
+  expect(model.ui.loadFailed).toBe(true);
+  expect(element("startup-progress").hidden).toBe(true);
+  expect(element("loading").textContent).toContain(model.t("loadError"));
+  release();
+  await loadProject.mock.results[0].value;
+  await flushPromises();
+  expect(model.ui.startupProgress).toBe(progress);
+  expect(model.ui.ready).toBe(false);
+});
+
+test("图集进度按唯一 URL 计数，缓存复用和失败不改变原渲染行为", async () => {
+  mountUi();
+  const texture = {
+    key: "progress",
+    url: atlasUrl("progress"),
+    width: 16,
+    height: 16,
+  };
+  const renderer = new SceneRenderer(
+    {},
+    { textures: [texture] },
+    { entries: [] },
+  );
+  const item = {
+    source: "progress.png",
+    region: {
+      textureUrl: texture.url,
+      textureKey: texture.key,
+      u: 0,
+      v: 0,
+      w: 16,
+      h: 16,
+    },
+    matrix: [1, 0, 0, 1, 0, 0],
+    dest: [0, 0, 16, 16],
+    alpha: 1,
+  };
+  const context = element("game").getContext("2d");
+  const onTextureLoaded = vi.fn();
+  const decode = vi.spyOn(HTMLImageElement.prototype, "decode");
+  const report = () => ({ drawn: [item, { ...item }], missing: [] });
+  await renderer.render(context, "unused", {
+    report: report(),
+    onTextureLoaded,
+  });
+  expect(onTextureLoaded).toHaveBeenCalledExactlyOnceWith(texture.url, true);
+  expect(decode).toHaveBeenCalledTimes(1);
+  await renderer.render(context, "unused", {
+    report: report(),
+    onTextureLoaded,
+  });
+  expect(onTextureLoaded).toHaveBeenCalledTimes(2);
+  expect(decode).toHaveBeenCalledTimes(1);
+  renderer.atlas.remove(texture.url);
+  decode.mockRejectedValueOnce(new Error("解码失败"));
+  const missing = report();
+  await renderer.render(context, "unused", {
+    report: missing,
+    onTextureLoaded,
+  });
+  expect(onTextureLoaded).toHaveBeenCalledTimes(3);
+  expect(onTextureLoaded).toHaveBeenLastCalledWith(texture.url, false);
+  expect(missing.missing).toHaveLength(2);
+});
+
+test("加载进度覆盖全部语言和 RTL，未知总数不显示虚构百分比", async () => {
+  mountUi();
+  model.ui.startupActive = true;
+  model.ui.startupProgress = [
+    { key: "loadingScene", completed: 0, total: null, failed: 0 },
+  ];
+  for (const code of Object.keys(model.languages)) {
+    model.settings.language = code;
+    for (const key of [
+      "loadingLogos",
+      "loadingData",
+      "loadingScene",
+      "loadingFailed",
+    ])
+      expect(model.t(key)).not.toBe(key);
+  }
+  model.settings.language = "ar";
+  await nextTick();
+  expect(element("startup-progress").dir).toBe("rtl");
+  expect(startupRow("loadingScene").textContent).toContain("—");
+  expect(
+    startupRow("loadingScene").querySelector("progress").hasAttribute("value"),
+  ).toBe(false);
+});
+
 test("启动页 Anime.js 时间线保持原版 Logo 顺序、线性淡入淡出和末页等待", async () => {
   mountUi();
   const startup = new StartupScreen(element("startup"), {}, document.baseURI);
@@ -812,6 +1062,30 @@ test("手机横屏居中棋盘保持正方形，触摸按屏幕偏移映射到�
     new PointerEvent("pointermove", {
       clientX: 330,
       clientY: 158,
+      pointerId: 1,
+      isPrimary: true,
+      pointerType: "touch",
+    }),
+  );
+  const state = step.mock.instances.at(-1);
+  expect(state.hovered.has(state.project.tree.attrs.staringCard)).toBe(true);
+});
+
+test("手机竖向视口旋转横屏舞台后，非中心触摸仍映射到原卡片", async () => {
+  vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true });
+  const step = vi.spyOn(RuntimeState.prototype, "step");
+  vi.spyOn(GameMotion.prototype, "position").mockReturnValue([0, 0]);
+  vi.spyOn(
+    HTMLCanvasElement.prototype,
+    "getBoundingClientRect",
+  ).mockReturnValue({ left: 20, top: 40, width: 300, height: 300 });
+  await bootRuntime();
+  await browser.step(44);
+  const offset = CARD_SIZE / (2 * BOARD_SIZE);
+  element("board").dispatchEvent(
+    new PointerEvent("pointermove", {
+      clientX: 20 + 300 * (1 - offset),
+      clientY: 40 + 300 * offset,
       pointerId: 1,
       isPrimary: true,
       pointerType: "touch",

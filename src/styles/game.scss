@@ -1,12 +1,12 @@
 :root {
   --viewport-height: 100svh;
-  --safe-width: calc(
-    100vw - env(safe-area-inset-left) - env(safe-area-inset-right)
-  );
+  --inset-top: env(safe-area-inset-top);
+  --inset-right: env(safe-area-inset-right);
+  --inset-bottom: env(safe-area-inset-bottom);
+  --inset-left: env(safe-area-inset-left);
+  --safe-width: calc(100vw - var(--inset-left) - var(--inset-right));
   --safe-height: calc(
-    var(--viewport-height) - env(safe-area-inset-top) - env(
-        safe-area-inset-bottom
-      )
+    var(--viewport-height) - var(--inset-top) - var(--inset-bottom)
   );
   font-family: Georgia, "Microsoft YaHei", serif;
   color: #535044;
@@ -39,8 +39,8 @@ body {
   overflow: clip;
   display: grid;
   place-items: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: var(--inset-top) var(--inset-right) var(--inset-bottom)
+    var(--inset-left);
 }
 #startup {
   position: fixed;
@@ -61,6 +61,39 @@ body {
     aspect-ratio: 16 / 9;
     object-fit: contain;
     pointer-events: none;
+  }
+}
+#startup-progress {
+  position: fixed;
+  z-index: 11;
+  right: max(16px, var(--inset-right));
+  bottom: max(12px, var(--inset-bottom));
+  left: max(16px, var(--inset-left));
+  width: min(320px, calc(var(--safe-width) - 32px));
+  margin-inline: auto;
+  padding: 12px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 92%);
+  color: #535044;
+  pointer-events: none;
+  font:
+    12px/1.5 system-ui,
+    sans-serif;
+  .startup-progress-stage + .startup-progress-stage {
+    margin-top: 8px;
+  }
+  .startup-progress-label {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  progress {
+    display: block;
+    width: 100%;
+    height: 6px;
+    margin-top: 4px;
+    accent-color: #80744f;
   }
 }
 .sr-only {
@@ -211,9 +244,8 @@ button {
 }
 #notice {
   position: fixed;
-  inset: auto calc(12px + env(safe-area-inset-right))
-    calc(8px + env(safe-area-inset-bottom))
-    calc(12px + env(safe-area-inset-left));
+  inset: auto calc(12px + var(--inset-right))
+    calc(8px + var(--inset-bottom)) calc(12px + var(--inset-left));
   margin: 0 auto;
   width: fit-content;
   padding: 8px 12px;
@@ -224,7 +256,7 @@ button {
 }
 #pause {
   position: fixed;
-  inset: env(safe-area-inset-top) env(safe-area-inset-right) auto auto;
+  inset: var(--inset-top) var(--inset-right) auto auto;
   z-index: 1;
   width: clamp(44px, 10vmin, 160px);
   aspect-ratio: 1;
@@ -247,9 +279,8 @@ body:has(#ending:not([hidden])) #pause {
   display: grid;
   justify-items: center;
   align-content: safe center;
-  padding: calc(52px + env(safe-area-inset-top))
-    max(6vw, env(safe-area-inset-right))
-    calc(20px + env(safe-area-inset-bottom)) max(6vw, env(safe-area-inset-left));
+  padding: calc(52px + var(--inset-top)) max(6vw, var(--inset-right))
+    calc(20px + var(--inset-bottom)) max(6vw, var(--inset-left));
   overflow: auto;
   overscroll-behavior: contain;
   background: #f4f2eb var(--paper, none) repeat;
@@ -509,7 +540,7 @@ button:disabled {
 @media (max-height: 500px) and (min-width: 521px) {
   #game-menu {
     align-content: start;
-    padding-top: calc(48px + env(safe-area-inset-top));
+    padding-top: calc(48px + var(--inset-top));
   }
   #chapter-list {
     min-height: 110px;
@@ -540,10 +571,9 @@ button:disabled {
 @media (min-width: 760px) and (min-height: 600px) and (min-aspect-ratio: 6/5) {
   #game-menu[data-page="settings"] {
     align-content: start;
-    padding: max(6svh, calc(44px + env(safe-area-inset-top)))
-      max(8.6vw, env(safe-area-inset-right))
-      max(2svh, env(safe-area-inset-bottom))
-      max(8.6vw, env(safe-area-inset-left));
+    padding: max(6svh, calc(44px + var(--inset-top)))
+      max(8.6vw, var(--inset-right)) max(2svh, var(--inset-bottom))
+      max(8.6vw, var(--inset-left));
     font:
       clamp(18px, 3.3svh, 54px) / 1.2 "Microsoft YaHei",
       system-ui,
@@ -586,12 +616,11 @@ button:disabled {
     padding: 0.25em;
   }
 }
-@media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+@media (pointer: coarse) and (max-height: 600px),
+  (pointer: coarse) and (max-width: 600px) {
   #game-menu {
-    padding: max(12px, env(safe-area-inset-top))
-      max(56px, env(safe-area-inset-right))
-      max(12px, env(safe-area-inset-bottom))
-      max(16px, env(safe-area-inset-left));
+    padding: max(12px, var(--inset-top)) max(56px, var(--inset-right))
+      max(12px, var(--inset-bottom)) max(16px, var(--inset-left));
     font-size: 16px;
   }
   .menu-pages {
@@ -709,8 +738,34 @@ button:disabled {
   }
 }
 #credits-prev {
-  left: max(8%, calc(22px + env(safe-area-inset-left)));
+  left: max(8%, calc(22px + var(--inset-left)));
 }
 #credits-next {
-  left: min(92%, calc(100% - 22px - env(safe-area-inset-right)));
+  left: min(92%, calc(100% - 22px - var(--inset-right)));
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  :root {
+    --inset-top: env(safe-area-inset-right);
+    --inset-right: env(safe-area-inset-bottom);
+    --inset-bottom: env(safe-area-inset-left);
+    --inset-left: env(safe-area-inset-top);
+    --safe-width: calc(
+      var(--viewport-height) - var(--inset-left) - var(--inset-right)
+    );
+    --safe-height: calc(100vw - var(--inset-top) - var(--inset-bottom));
+  }
+  #app {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: var(--viewport-height);
+    height: 100vw;
+    min-height: 0;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+  #ending {
+    width: 100%;
+    height: 100%;
+  }
 }
