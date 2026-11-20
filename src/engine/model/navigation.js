@@ -1,5 +1,5 @@
 import { CARD_SIZE, resolveViewpoint, vector } from "../render/camera.js";
-import { interpFraction } from "../animation.js";
+import { clamp01, interpFraction } from "../animation.js";
 const BUTTONS = new Set([
   "BACK_BUTTON",
   "UP_BUTTON",
@@ -135,23 +135,19 @@ function sampleKeyframes(frames, time) {
 }
 /** elapsedSeconds自本次导航开始计时；相机只插值translation，保留from旋转/缩放。 */
 export function sampleTransition(plan, elapsedSeconds) {
-  const raw = plan.durationSeconds
-    ? Math.max(0, Math.min(1, elapsedSeconds / plan.durationSeconds))
-    : 1;
-  const fraction = plan.keyframes.length
-    ? plan.reverse
+  const { keyframes: frames, startFrame, reverse, durationSeconds } = plan;
+  const raw = durationSeconds ? clamp01(elapsedSeconds / durationSeconds) : 1;
+  const fraction = frames.length
+    ? reverse
       ? 1 - raw
       : raw
     : interpFraction(plan.interpFunction, raw);
   let offset;
-  if (plan.keyframes.length) {
-    const last = plan.keyframes.at(-1).time,
-      time = plan.startFrame + (last - plan.startFrame) * fraction,
-      current = sampleKeyframes(plan.keyframes, time),
-      base = sampleKeyframes(
-        plan.keyframes,
-        plan.reverse ? last : plan.startFrame,
-      );
+  if (frames.length) {
+    const last = frames.at(-1).time,
+      time = startFrame + (last - startFrame) * fraction,
+      current = sampleKeyframes(frames, time),
+      base = sampleKeyframes(frames, reverse ? last : startFrame);
     offset = current.map((value, i) => value - base[i]);
   } else
     offset = plan.to.camera.position.map(

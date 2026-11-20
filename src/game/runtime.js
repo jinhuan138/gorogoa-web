@@ -1,3 +1,4 @@
+import { GameMotion } from "./motion.js";
 import { AudioBank } from "../engine/audio/audio.js";
 import { SoundtrackDirector } from "../engine/audio/soundtrack.js";
 import { InterfaceSounds } from "../engine/audio/interface.js";
@@ -15,14 +16,12 @@ import {
   CELLS,
   centerCard,
   cellPosition,
+  cardAt,
   currentStoryPhase,
   nextStoryPhase,
-  chapterOpening,
-  chapterClosing,
   beginCardDrag,
   cancelCardDrag,
   planCardDrop,
-  sampleCardDrop,
   finishCardDrop,
 } from "../engine/model/board.js";
 import { loadChapterCheckpoint, loadProject } from "../engine/model/project.js";
@@ -143,14 +142,10 @@ export async function startGame({
     renderer,
     manifest,
     epoch = pageNow(),
-    viewChange = null,
     dirty = true,
     drag = null,
     press = null,
     tap = null,
-    opening = null,
-    closing = null,
-    flight = null,
     lastHotspotKey = "",
     lastStateVersion = -1;
   let blockedCards = new Set();
@@ -179,24 +174,45 @@ export async function startGame({
   };
   const now = () =>
     startup.active ? 0 : ((pausedAt ?? pageNow()) - epoch) / 1000;
+  const motion = new GameMotion({
+    navigation: (move) => state.setLocation(move.card, move.destination),
+    flight: ({ drag: drop, plan }) => {
+      const lowerCard = cardAt(state, plan.cell);
+      if (finishCardDrop(links, drop, plan)) {
+        if (
+          state.captors.get(lowerCard) === drop.draggedGUID &&
+          state.captureSides.get(lowerCard) === "UNDER"
+        )
+          audioFocus = drop.draggedGUID;
+        soundDirector?.playInterface("int_drop_card");
+      }
+    },
+    opening: ({ guid, cell }) => links.place(guid, cell),
+    closing: ({ guid }) => links.place(guid, CELLS[0]),
+  });
   const showNotice = (message) => {
     ui.notice = message;
   };
-  const showGrid = () => state.storyPhase === "CHAPTERS" || Boolean(closing);
+  const showGrid = () =>
+    state.storyPhase === "CHAPTERS" || Boolean(motion.closing);
   const inputBusy = () =>
     disposed ||
     backgrounded ||
     startup.active ||
     pausedAt !== null ||
-    Boolean(viewChange || drag || flight || opening || closing);
+    Boolean(drag || motion.busy);
   const canMove = (guid) => !blockedCards.has(guid);
   function cards() {
     const front =
-      drag?.draggedGUID || flight?.drag.draggedGUID || closing?.guid;
+      drag?.draggedGUID ||
+      motion.flight?.drag.draggedGUID ||
+      motion.closing?.guid;
     return [...state.inPlay]
       .filter(
         (guid) =>
-          guid === front || guid === opening?.guid || state.coords.has(guid),
+          guid === front ||
+          guid === motion.opening?.guid ||
+          state.coords.has(guid),
       )
       .sort((a, b) => Number(a === front) - Number(b === front))
       .map((guid) => ({
@@ -207,22 +223,13 @@ export async function startGame({
   }
   function placement(card) {
     if (drag?.draggedGUID === card.guid) return drag.topLeft;
-    if (flight?.drag.draggedGUID === card.guid) return flight.sample.dragged;
-    if (flight?.plan.shuffle?.guid === card.guid) return flight.sample.shuffled;
-    if (opening?.guid === card.guid) return opening.sample.position;
-    if (closing?.guid === card.guid) return closing.sample.position;
-    return showGrid() ? cellPosition(card.coords) : centerCard();
+    return (
+      motion.position(card.guid) ??
+      (showGrid() ? cellPosition(card.coords) : centerCard())
+    );
   }
   function displayCoords(guid) {
-    let pixels;
-    if (drag?.draggedGUID === guid) pixels = drag.topLeft;
-    else if (flight?.drag.draggedGUID === guid) pixels = flight.sample.dragged;
-    else if (flight?.plan.shuffle?.guid === guid)
-      pixels = flight.sample.shuffled;
-    else if (opening?.guid === guid) pixels = opening.sample.position;
-    return pixels
-      ? pixels.map((value) => (value - BOARD_INSET) / CARD_SIZE)
-      : state.coords.get(guid);
+    return motion.displayCoords(guid, drag) ?? state.coords.get(guid);
   }
   function logicalPoint(event) {
     const rect = canvas.getBoundingClientRect();
@@ -323,12 +330,15 @@ export async function startGame({
       prefetchPlan(plan);
       state.targets.set(card.guid, transition.attrs.guid);
       if (plan.durationSeconds > 0) audioFocus = card.guid;
-      viewChange = {
-        card: card.guid,
-        destination: plan.destination.attrs.guid,
-        plan,
-        started: now(),
-      };
+      motion.start(
+        "navigation",
+        {
+          card: card.guid,
+          destination: plan.destination.attrs.guid,
+          plan,
+        },
+        now(),
+      );
       board.dataset.cursor = "wait";
       dirty = true;
       showNotice("");
@@ -338,8 +348,8 @@ export async function startGame({
     }
   }
   function followCapturedTransitions() {
-    if (!viewChange) return;
-    const target = state.targets.get(viewChange.card);
+    if (!motion.navigation) return;
+    const target = state.targets.get(motion.navigation.card);
     for (const guid of state.captors.keys()) {
       const transition = state.getTransitions(guid).find((candidate) => {
         if (
@@ -368,12 +378,7 @@ export async function startGame({
   function updateBoardCursor() {
     const hovered = [...state.hovered][0];
     const waiting =
-      waitingForBoardTextures ||
-      viewChange ||
-      flight ||
-      opening ||
-      closing ||
-      (hovered && !canMove(hovered));
+      waitingForBoardTextures || motion.busy || (hovered && !canMove(hovered));
     const canDrag = hovered && state.coords.has(hovered) && showGrid();
     board.dataset.cursor = drag
       ? "move"
@@ -486,13 +491,7 @@ export async function startGame({
     drag = null;
     const topLeft = logicalPoint(event).map((v, i) => v - current.offset[i]);
     const plan = planCardDrop(links, current, topLeft, canMove);
-    if (plan)
-      flight = {
-        drag: current,
-        plan,
-        started: now(),
-        sample: sampleCardDrop(plan, 0),
-      };
+    if (plan) motion.start("flight", { drag: current, plan }, now());
     else cancelCardDrag(links, current);
     dirty = true;
   });
@@ -526,7 +525,8 @@ export async function startGame({
     graphicTimes.clear();
     layerStatus.clear();
     blockedCards.clear();
-    viewChange = drag = press = tap = opening = closing = flight = null;
+    motion.cancel();
+    drag = press = tap = null;
     scripts = new ProjectScripts(project);
     state = new RuntimeState(project, {
       scriptEvaluator: (definition, predicate) =>
@@ -654,67 +654,13 @@ export async function startGame({
       if (!lastCardsInPlay.has(guid)) audioFocus = guid;
     lastCardsInPlay = new Set(state.inPlay);
     if (audioFocus && !state.inPlay.has(audioFocus)) audioFocus = undefined;
-    const moving =
-      viewChange &&
-      viewChange.card === audioFocus &&
-      viewChange.plan.durationSeconds > 0;
-    const location = moving
-      ? viewChange.destination
-      : state.locations.get(audioFocus);
+    const move = motion.navigation;
+    const moving = move?.card === audioFocus && move?.plan.durationSeconds > 0;
     soundDirector?.syncLocation(
-      location,
-      moving ? viewChange.plan.durationSeconds : audioFocus ? 0.01 : 1,
+      moving ? move.destination : state.locations.get(audioFocus),
+      moving ? move.plan.durationSeconds : audioFocus ? 0.01 : 1,
     );
-    soundDirector?.syncScore(state, viewChange);
-  }
-  function navigationView(time) {
-    if (!viewChange) return null;
-    const move = viewChange,
-      sample = sampleTransition(move.plan, time - move.started);
-    if (sample.complete) {
-      state.setLocation(move.card, move.destination);
-      viewChange = null;
-      dirty = true;
-      return null;
-    }
-    return sample.viewpoint;
-  }
-  function updateBoardMotion(time) {
-    if (flight) {
-      flight.sample = sampleCardDrop(flight.plan, time - flight.started);
-      dirty = true;
-      if (flight.sample.complete) {
-        const { drag: drop, plan } = flight;
-        const lowerCard = [...state.coords].find(
-          ([, point]) => point[0] === plan.cell[0] && point[1] === plan.cell[1],
-        )?.[0];
-        if (finishCardDrop(links, drop, plan)) {
-          if (
-            state.captors.get(lowerCard) === drop.draggedGUID &&
-            state.captureSides.get(lowerCard) === "UNDER"
-          )
-            audioFocus = drop.draggedGUID;
-          soundDirector?.playInterface("int_drop_card");
-        }
-        flight = null;
-      }
-    }
-    if (opening) {
-      opening.sample = chapterOpening(time - opening.started);
-      dirty = true;
-      if (opening.sample.complete) {
-        links.place(opening.guid, opening.cell);
-        opening = null;
-      }
-    }
-    if (closing) {
-      closing.sample = chapterClosing(closing.cell, time - closing.started);
-      dirty = true;
-      if (closing.sample.complete) {
-        links.place(closing.guid, CELLS[0]);
-        closing = null;
-      }
-    }
+    soundDirector?.syncScore(state, move);
   }
   function advanceStory(time) {
     const phase = nextStoryPhase(state, state.storyPhase);
@@ -723,32 +669,19 @@ export async function startGame({
     state.storyPhase = phase;
     state.version++;
     dirty = true;
-    if (phase === "ENDING") endingStarted = viewChange?.started ?? time;
+    if (phase === "ENDING") endingStarted = motion.navigation?.started ?? time;
     if (phase === "CHAPTERS") {
       const guid = project.tree.attrs.staringCard,
         cell = state.coords.get(guid);
       if (cell) {
-        opening = { guid, cell, started: time, sample: chapterOpening(0) };
+        motion.start("opening", { guid, cell }, time);
         state.coords.delete(guid);
       }
     } else if (phase === "EPILOGUE") {
-      const cell = CELLS.find((point) =>
-        [...state.coords.values()].some(
-          (at) => point[0] === at[0] && point[1] === at[1],
-        ),
-      );
-      const guid =
-        cell &&
-        [...state.coords].find(
-          ([, at]) => at[0] === cell[0] && at[1] === cell[1],
-        )?.[0];
+      const cell = CELLS.find((point) => cardAt(state, point));
+      const guid = cell && cardAt(state, cell);
       if (guid) {
-        closing = {
-          guid,
-          cell,
-          started: time,
-          sample: chapterClosing(cell, 0),
-        };
+        motion.start("closing", { guid, cell }, time);
         state.coords.delete(guid);
       }
     }
@@ -881,9 +814,9 @@ export async function startGame({
     if (!bootReady) return;
     if (pausedAt !== null) return;
     try {
-      const time = now(),
-        viewpoint = navigationView(time);
-      updateBoardMotion(time);
+      const time = now();
+      if (motion.update(time)) dirty = true;
+      const viewpoint = motion.navigation?.sample.viewpoint;
       if (scripts.update(state, time, { displayCoords })) dirty = true;
       if (state.version !== lastStateVersion) {
         dirty = true;
@@ -909,18 +842,20 @@ export async function startGame({
         }
       }
       syncSoundtrack();
-      let reports = cards().map((card) => ({
+      const buildReport = (card) => ({
         card,
         report: renderer.buildDrawList(card.location, {
           timeSeconds: time,
           graphicTimes,
           transitionLocations:
-            viewChange?.card === card.guid
-              ? viewChange.plan.locations
+            motion.navigation?.card === card.guid
+              ? motion.navigation.plan.locations
               : undefined,
-          viewpoint: viewChange?.card === card.guid ? viewpoint : undefined,
+          viewpoint:
+            motion.navigation?.card === card.guid ? viewpoint : undefined,
         }),
-      }));
+      });
+      let reports = cards().map(buildReport);
       let newClock = false;
       const active = new Set();
       for (const { report } of reports)
@@ -931,43 +866,29 @@ export async function startGame({
             soundDirector?.playGraphic(
               project.get(animation.guid),
               state,
-              viewChange,
+              motion.navigation,
             );
             newClock = true;
           }
         }
       for (const guid of graphicTimes.keys())
         if (!active.has(guid)) graphicTimes.delete(guid);
-      if (newClock)
-        reports = reports.map(({ card }) => ({
-          card,
-          report: renderer.buildDrawList(card.location, {
-            timeSeconds: time,
-            graphicTimes,
-            transitionLocations:
-              viewChange?.card === card.guid
-                ? viewChange.plan.locations
-                : undefined,
-            viewpoint: viewChange?.card === card.guid ? viewpoint : undefined,
-          }),
-        }));
+      if (newClock) reports = reports.map(({ card }) => buildReport(card));
       const hasAnimations = reports.some(({ report }) =>
         report.animations.some((a) => !a.complete),
       );
-      blockedCards = new Set(
-        reports
-          .filter(({ card, report }) =>
-            report.animations.some(
-              (a) =>
-                !a.complete &&
-                project.get(a.guid)?.attrs.interactiveWhenAnimating !==
-                  "true" &&
-                project.owner(project.get(a.guid), "Card")?.attrs.guid ===
-                  card.guid,
-            ),
+      blockedCards = new Set();
+      for (const { card, report } of reports)
+        if (
+          report.animations.some(
+            (a) =>
+              !a.complete &&
+              project.get(a.guid)?.attrs.interactiveWhenAnimating !== "true" &&
+              project.owner(project.get(a.guid), "Card")?.attrs.guid ===
+                card.guid,
           )
-          .map(({ card }) => card.guid),
-      );
+        )
+          blockedCards.add(card.guid);
       updateBoardCursor();
       // A layer that no longer has an enabled graphic must stop gating state transitions.
       // Combine all reports: a linked or stacked view can show the same layer as another card.
@@ -1005,7 +926,7 @@ export async function startGame({
           }
         }
       }
-      if (dirty || hasAnimations || viewChange || newClock) {
+      if (dirty || hasAnimations || motion.navigation || newClock) {
         dirty = false;
         const frameState = state;
         // Decoding a card can yield to the browser. Keep the last finished board visible until every card is painted.
@@ -1015,9 +936,9 @@ export async function startGame({
         if (showGrid())
           paintGrid(
             frameContext,
-            opening?.sample.progress ?? 1,
-            closing?.sample.scale,
-            closing?.sample.alpha,
+            motion.opening?.sample.progress ?? 1,
+            motion.closing?.sample.scale,
+            motion.closing?.sample.alpha,
           );
         const activeTextureUrls = reportTextureUrls(
           reports.map((entry) => entry.report),
@@ -1166,6 +1087,8 @@ export async function startGame({
     for (const remove of listeners) remove();
     resizeObserver.disconnect();
     startup.finish();
+    motion.cancel();
+    creditsScreen?.reset();
     soundDirector?.stop();
     soundBank.stopAll();
     actions.disposeInterfaceSounds();

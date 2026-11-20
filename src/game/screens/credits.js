@@ -1,3 +1,5 @@
+import { ManualTimeline } from "../timeline.js";
+
 export class EndingCredits {
   constructor(root, page, previous, next, arrowImages) {
     Object.assign(this, { root, page, previous, next });
@@ -32,6 +34,11 @@ export class EndingCredits {
     this.root.hidden = !current;
     this.previous.hidden = index === 0;
     if (!current) return;
+    const { fadeIn, fadeOut } = this.data;
+    this.duration = fadeIn + current.hold + fadeOut;
+    this.timeline = new ManualTimeline({ opacity: 0 })
+      .add({ opacity: [0, 1] }, fadeIn)
+      .add({ opacity: [1, 0] }, fadeOut, fadeIn + current.hold);
     this.page.replaceChildren();
     for (const { style, text, offset } of current.lines) {
       const line = document.createElement(style === "Text" ? "p" : "h2");
@@ -59,16 +66,12 @@ export class EndingCredits {
   update(time) {
     if (!this.data || this.root.hidden) return;
     this.time = time;
-    const { fadeIn, fadeOut, pages } = this.data;
-    let duration = fadeIn + pages[this.index].hold + fadeOut;
-    while (time - this.pageStarted >= duration) {
-      this.setPage(this.index + 1, this.pageStarted + duration);
+    while (time - this.pageStarted >= this.duration) {
+      this.setPage(this.index + 1, this.pageStarted + this.duration);
       if (this.root.hidden) return;
-      duration = fadeIn + pages[this.index].hold + fadeOut;
     }
-    const elapsed = time - this.pageStarted;
     this.page.style.opacity = String(
-      Math.min(1, elapsed / fadeIn, (duration - elapsed) / fadeOut),
+      this.timeline.seek(time - this.pageStarted).opacity,
     );
   }
 }

@@ -1,3 +1,5 @@
+import { ManualTimeline } from "../timeline.js";
+
 // Windows level0, SplashController component 1233 and its three Resources sprite paths.
 export const STARTUP_SLIDES = [
   {
@@ -44,6 +46,13 @@ export class StartupScreen {
     this.active = true;
     this.showingLast = false;
     this.index = -1;
+    this.timeline = new ManualTimeline({ logo: 0, background: 1 });
+    for (let index = 0; index < STARTUP_SLIDES.length; index++) {
+      const start = index * SLIDE_SECONDS;
+      this.timeline.add({ logo: [0, 1] }, FADE, start);
+      if (index < STARTUP_SLIDES.length - 1)
+        this.timeline.add({ logo: [1, 0] }, FADE, start + FADE + HOLD);
+    }
     this.images = STARTUP_SLIDES.map(({ url, label }) => {
       const image = new Image();
       image.src = new URL(url, baseUrl).href;
@@ -99,33 +108,33 @@ export class StartupScreen {
       Math.floor(elapsed / SLIDE_SECONDS),
       STARTUP_SLIDES.length - 1,
     );
-    const inSlide = elapsed - index * SLIDE_SECONDS;
     this.showingLast = elapsed >= LAST_START;
     if (this.index !== index) {
       this.index = index;
       this.button.replaceChildren(this.images[index]);
     }
-    let opacity = Math.min(1, inSlide / FADE, (SLIDE_SECONDS - inSlide) / FADE);
-    if (this.showingLast) {
-      if (inSlide >= FADE + HOLD && boardReady) this.lastFade ??= time;
-      opacity = Math.min(
-        1,
-        inSlide / FADE,
-        this.lastFade === undefined ? 1 : 1 - (time - this.lastFade) / FADE,
-      );
+    if (
+      elapsed >= LAST_START + FADE + HOLD &&
+      boardReady &&
+      this.lastFade === undefined
+    ) {
+      this.lastFade = time;
+      this.timeline
+        .add({ logo: [1, 0] }, FADE, elapsed)
+        .add({ background: [1, 0] }, FADE, elapsed + FADE);
     }
+    const visual = this.timeline.seek(elapsed);
     this.images[index].alt = this.showingLast
       ? this.gameName()
       : STARTUP_SLIDES[index].label;
-    this.images[index].style.opacity = String(Math.max(0, opacity));
+    this.images[index].style.opacity = String(visual.logo);
     if (this.lastFade === undefined || time - this.lastFade < FADE) return;
     if (this.backgroundFade === undefined) {
       this.backgroundFade = this.lastFade + FADE;
       this.fadeMusic(time);
     }
-    const remaining = 1 - (time - this.backgroundFade) / FADE;
-    this.button.style.opacity = String(Math.max(0, remaining));
-    if (remaining <= 0) this.finish();
+    this.button.style.opacity = String(visual.background);
+    if (time - this.backgroundFade >= FADE) this.finish();
   }
 
   finish() {

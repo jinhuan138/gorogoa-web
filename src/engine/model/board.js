@@ -18,10 +18,7 @@ export const STORY_PHASES = Object.freeze([
   "EPILOGUE",
   "ENDING",
 ]);
-export const centerCard = () => [
-  (BOARD_SIZE - CARD_SIZE) / 2,
-  (BOARD_SIZE - CARD_SIZE) / 2,
-];
+export const centerCard = () => Array(2).fill((BOARD_SIZE - CARD_SIZE) / 2);
 export const cellPosition = ([col, row]) => [
   BOARD_INSET + col * CARD_SIZE,
   BOARD_INSET + row * CARD_SIZE,
@@ -78,9 +75,8 @@ export function chapterClosing(cell, elapsed) {
   const progress = clamp01(elapsed / 3),
     eased = interpFraction("SINE", progress);
   const center = centerCard(),
-    from = cellPosition(cell),
-    dx = from[0] - center[0],
-    dy = from[1] - center[1];
+    from = cellPosition(cell);
+  const [dx, dy] = from.map((value, i) => value - center[i]);
   const radius = Math.hypot(dx, dy) * (1 - interpFraction("TO_SINE", eased));
   // Unity measures positive angles in its upward Y axis; canvas Y points down.
   const angle = Math.atan2(dy, dx) - Math.PI * 1.5 * eased;
@@ -152,7 +148,7 @@ export function cancelCardDrag(links, drag) {
   links.refresh();
 }
 
-const cardAt = (state, cell) =>
+export const cardAt = (state, cell) =>
   [...state.coords].find(([, point]) => equal(point, cell))?.[0];
 const firstEmpty = (state) => CELLS.find((cell) => !cardAt(state, cell));
 function canStack(links, dragged, occupant) {
@@ -200,35 +196,20 @@ export function planCardDrop(links, drag, topLeft, canMove = () => true) {
   }
   if (!cell) return null;
   const destination = cellPosition(cell);
-  let ms = Math.max(
+  const a = shuffle ? cellPosition(shuffle.from) : topLeft,
+    b = shuffle ? cellPosition(shuffle.to) : destination;
+  const ms = Math.max(
     100,
-    Math.min(
-      350,
-      Math.trunc(
-        2 *
-          Math.hypot(destination[0] - topLeft[0], destination[1] - topLeft[1]),
-      ),
-    ),
+    Math.min(350, Math.trunc(2 * Math.hypot(b[0] - a[0], b[1] - a[1]))),
   );
-  if (shuffle) {
-    const a = cellPosition(shuffle.from),
-      b = cellPosition(shuffle.to);
-    ms = Math.max(
-      100,
-      Math.min(350, Math.trunc(2 * Math.hypot(b[0] - a[0], b[1] - a[1]))),
-    );
-  }
   return { cell, shuffle, topLeft, destination, duration: ms / 1000 };
 }
 
 export function sampleCardDrop(plan, elapsed) {
+  const { topLeft: from, destination: to } = plan;
   const progress = clamp01(elapsed / plan.duration);
   const positions = {
-    dragged: flightPosition(
-      plan.topLeft,
-      plan.destination,
-      interpFraction("SINE", progress),
-    ),
+    dragged: flightPosition(from, to, interpFraction("SINE", progress)),
   };
   if (plan.shuffle)
     positions.shuffled = flightPosition(

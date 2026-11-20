@@ -19,6 +19,9 @@ import { RuntimeState } from "../src/engine/model/state.js";
 import { BOARD_SIZE } from "../src/engine/model/board.js";
 import { CARD_SIZE } from "../src/engine/render/camera.js";
 import { EndingScreen } from "../src/game/screens/ending.js";
+import { EndingCredits } from "../src/game/screens/credits.js";
+import { engine } from "animejs/engine";
+import { GameMotion } from "../src/game/motion.js";
 
 let browser, model, wrapper;
 beforeEach(() => {
@@ -615,6 +618,180 @@ async function firstHotspot() {
   return model.ui.hotspots[0];
 }
 
+test("启动页 Anime.js 时间线保持原版 Logo 顺序、线性淡入淡出和末页等待", async () => {
+  mountUi();
+  const startup = new StartupScreen(element("startup"), {}, document.baseURI);
+  await flushPromises();
+  for (const [time, index, opacity] of [
+    [0, 0, 0],
+    [0.5, 0, 0.5],
+    [1.5, 0, 1],
+    [2.5, 0, 0.5],
+    [3, 1, 0],
+    [3.5, 1, 0.5],
+    [5.5, 1, 0.5],
+    [6, 2, 0],
+    [6.5, 2, 0.5],
+    [7, 2, 1],
+    [15, 2, 1],
+  ]) {
+    startup.update(time, false);
+    expect(startup.index).toBe(index);
+    expect(Number(element("startup").firstElementChild.style.opacity)).toBe(
+      opacity,
+    );
+    expect(startup.active).toBe(true);
+  }
+  expect(startup.timeline.animation.paused).toBe(true);
+  expect(engine.useDefaultMainLoop).toBe(false);
+  browser.setHidden(true);
+  browser.time += 60;
+  browser.setHidden(false);
+  expect(browser.pendingFrame).toBe(false);
+  expect(engine.reqId).toBe(0);
+  startup.finish();
+});
+
+test("启动图像解码完成后才计时，解码失败也等待其余图像", async () => {
+  mountUi();
+  const decodes = [];
+  vi.spyOn(HTMLImageElement.prototype, "decode").mockImplementation(
+    () => new Promise((resolve, reject) => decodes.push({ resolve, reject })),
+  );
+  let time = 0;
+  const startup = new StartupScreen(
+    element("startup"),
+    {},
+    document.baseURI,
+    undefined,
+    { now: () => time },
+  );
+  time = 20;
+  startup.update(time, true);
+  expect(startup.started).toBeUndefined();
+  expect(startup.index).toBe(-1);
+  decodes[0].reject(new Error("图像无法解码"));
+  decodes[1].resolve();
+  await flushPromises();
+  expect(startup.started).toBeUndefined();
+  decodes[2].resolve();
+  await flushPromises();
+  expect(startup.started).toBe(20);
+  startup.update(20.5, true);
+  expect(startup.index).toBe(0);
+  expect(startup.images[0].style.opacity).toBe("0.5");
+  startup.finish();
+});
+
+test("启动页资源迟到时，从就绪时刻安排 Logo 与背景的连续淡出", async () => {
+  mountUi();
+  const startup = new StartupScreen(element("startup"), {}, document.baseURI);
+  await flushPromises();
+  startup.update(15, false);
+  startup.update(15, true);
+  expect(startup.lastFade).toBe(15);
+  expect(Number(startup.images[2].style.opacity)).toBe(1);
+  startup.update(15.25, true);
+  expect(Number(startup.images[2].style.opacity)).toBe(0.75);
+  startup.update(16, true);
+  expect(Number(startup.images[2].style.opacity)).toBe(0);
+  expect(Number(startup.button.style.opacity)).toBe(1);
+  startup.update(16.5, true);
+  expect(Number(startup.button.style.opacity)).toBe(0.5);
+  expect(startup.active).toBe(true);
+  startup.update(17, true);
+  expect(startup.button.hidden).toBe(true);
+  expect(startup.active).toBe(false);
+  expect(startup.timeline.animation.paused).toBe(true);
+  expect(engine.reqId).toBe(0);
+});
+
+function createCreditsScreen() {
+  const root = document.createElement("div");
+  const page = document.createElement("div");
+  const previous = document.createElement("button");
+  const next = document.createElement("button");
+  root.append(page, previous, next);
+  document.body.append(root);
+  const screen = new EndingCredits(root, page, previous, next, {});
+  const data = {
+    fadeIn: 0.5,
+    fadeOut: 0.5,
+    spacing: 0,
+    pages: [1, 2, 1].map((hold, index) => ({
+      hold,
+      lines: [{ style: "Heading", text: `第 ${index + 1} 页`, offset: 0 }],
+    })),
+  };
+  screen.start(data, 10);
+  return { screen, data, root, page, previous, next };
+}
+
+test("片尾名单 Anime.js 时间线保持淡入、停留、淡出和自动翻页时序", () => {
+  const { screen, page } = createCreditsScreen();
+  for (const [time, index, opacity] of [
+    [10, 0, 0],
+    [10.25, 0, 0.5],
+    [10.5, 0, 1],
+    [11.5, 0, 1],
+    [11.75, 0, 0.5],
+    [12, 1, 0],
+    [12.25, 1, 0.5],
+  ]) {
+    screen.update(time);
+    expect(screen.index).toBe(index);
+    expect(page.firstElementChild.textContent).toBe(`第 ${index + 1} 页`);
+    expect(Number(page.style.opacity)).toBe(opacity);
+    expect(screen.timeline.animation.paused).toBe(true);
+  }
+  expect(engine.reqId).toBe(0);
+  screen.reset();
+});
+
+test("片尾名单手动前后翻页重新淡入，并换用新一页时间线", () => {
+  const { screen, page, previous, next } = createCreditsScreen();
+  screen.update(10.25);
+  const first = screen.timeline;
+  next.click();
+  expect(screen.timeline).not.toBe(first);
+  expect(screen.index).toBe(1);
+  expect(page.style.opacity).toBe("0");
+  screen.update(10.5);
+  expect(Number(page.style.opacity)).toBe(0.5);
+  const second = screen.timeline;
+  previous.click();
+  expect(screen.timeline).not.toBe(second);
+  expect(screen.index).toBe(0);
+  expect(page.style.opacity).toBe("0");
+  expect(previous.hidden).toBe(true);
+  screen.reset();
+});
+
+test("片尾名单跨多页跳帧、结束、重新开始和重置后不再更新", () => {
+  const { screen, data, root, page } = createCreditsScreen();
+  screen.update(16.25);
+  expect(screen.index).toBe(2);
+  expect(screen.pageStarted).toBe(15);
+  expect(page.style.opacity).toBe("1");
+  screen.update(16.75);
+  expect(Number(page.style.opacity)).toBe(0.5);
+  screen.update(17);
+  expect(root.hidden).toBe(true);
+  expect(Number(page.style.opacity)).toBe(0.5);
+  screen.start(data, 20);
+  screen.update(20.25);
+  expect(root.hidden).toBe(false);
+  expect(screen.index).toBe(0);
+  expect(Number(page.style.opacity)).toBe(0.5);
+  screen.reset();
+  expect(screen.data).toBeNull();
+  expect(root.hidden).toBe(true);
+  screen.update(100);
+  expect(root.hidden).toBe(true);
+  expect(Number(page.style.opacity)).toBe(0.5);
+  expect(engine.reqId).toBe(0);
+});
+
 test("启动页后台停帧，恢复保留 Logo 与淡入进度", async () => {
   await bootRuntime();
   await browser.step(2);
@@ -649,6 +826,71 @@ test("游戏转场与脚本时钟不计后台时间，pagehide/pageshow 同样�
   await browser.step(12);
   expect(element("game").dataset.locations).not.toBe(location);
 });
+
+test("导航运动在菜单和后台冻结但不取消，恢复沿用同一个运动", async () => {
+  const update = vi.spyOn(GameMotion.prototype, "update");
+  await bootRuntime();
+  await browser.step(44);
+  const hotspot = await firstHotspot();
+  model.actions.navigate(hotspot.card, hotspot.id);
+  await browser.step(1, 0.1);
+  const motion = update.mock.instances.at(-1);
+  const move = motion.navigation;
+  const fraction = move.sample.fraction;
+  model.actions.toggleMenu();
+  await browser.step(4);
+  browser.setHidden(true);
+  browser.time += 60;
+  browser.setHidden(false);
+  await browser.step(2);
+  expect(motion.navigation).toBe(move);
+  expect(move.sample.fraction).toBe(fraction);
+  model.actions.toggleMenu();
+  await browser.step(1, 0);
+  expect(move.sample.fraction).toBe(fraction);
+  await browser.step(12);
+  expect(motion.navigation).toBeNull();
+  expect(move.sample.complete).toBe(true);
+  expect(engine.reqId).toBe(0);
+});
+
+test.each(["重建", "销毁"])(
+  "导航绘制解码中%s：取消旧运动并拒绝发布旧 RuntimeState 的帧",
+  async (action) => {
+    const update = vi.spyOn(GameMotion.prototype, "update");
+    const commit = vi.spyOn(RuntimeState.prototype, "setLocation");
+    await bootRuntime();
+    await browser.step(44);
+    const hotspot = await firstHotspot();
+    const publish = vi.spyOn(element("game").getContext("2d"), "drawImage");
+    let release;
+    vi.spyOn(SceneRenderer.prototype, "render").mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    model.actions.navigate(hotspot.card, hotspot.id);
+    const pending = browser.step(1, 0.01);
+    expect(release).toBeTypeOf("function");
+    const motion = update.mock.instances.at(-1);
+    expect(motion.navigation).not.toBeNull();
+    commit.mockClear();
+    if (action === "重建") await model.actions.loadChapter(0);
+    else model.dispose();
+    expect(motion.navigation).toBeNull();
+    expect(motion.busy).toBe(false);
+    release();
+    await pending;
+    expect(publish).not.toHaveBeenCalled();
+    motion.update(100);
+    expect(commit).not.toHaveBeenCalled();
+    if (action === "重建") {
+      await browser.step();
+      expect(publish).toHaveBeenCalled();
+    } else expect(browser.pendingFrame).toBe(false);
+  },
+);
 
 test("后台暂停两套音频且清理短音效，恢复保留手动暂停与静音", async () => {
   mockAudio();
@@ -846,12 +1088,14 @@ test("下一场景预测只请求纹理，不提前改变卡片位置、目标�
   const location = new Map(state.locations),
     targets = new Map(state.targets);
   const update = vi.spyOn(ProjectScripts.prototype, "update");
+  const startMotion = vi.spyOn(GameMotion.prototype, "start");
   model.actions.prefetchNavigation(hotspot.card, hotspot.id);
   expect(prefetch).toHaveBeenCalledTimes(1);
   expect(prefetch.mock.calls[0][0].length).toBeGreaterThan(0);
   expect(state.locations).toEqual(location);
   expect(state.targets).toEqual(targets);
   expect(update).not.toHaveBeenCalled();
+  expect(startMotion).not.toHaveBeenCalled();
   browser.setHidden(true);
   model.actions.prefetchNavigation(hotspot.card, hotspot.id);
   expect(prefetch).toHaveBeenCalledTimes(1);
@@ -957,8 +1201,9 @@ test("启动声音解锁中销毁，迟到的上下文也被关闭", async () =>
   expect(browser.pendingFrame).toBe(false);
 });
 
-test("片尾动画使用冻结时钟，结局画布的像素密度也限制为 2", async () => {
+test("片尾动画和名单使用冻结时钟，结局画布的像素密度也限制为 2", async () => {
   const draw = vi.spyOn(EndingScreen.prototype, "draw");
+  const update = vi.spyOn(EndingCredits.prototype, "update");
   await bootRuntime();
   const gl = new Proxy(
     {
@@ -987,6 +1232,29 @@ test("片尾动画使用冻结时钟，结局画布的像素密度也限制为 2
   expect(draw.mock.calls.at(-1)[0]).toBeCloseTo(elapsed);
   expect(element("ending").width).toBe(720);
   expect(element("ending").height).toBe(1200);
+  for (let i = 0; i < 240 && element("credits").hidden; i++)
+    await browser.step();
+  expect(element("credits").hidden).toBe(false);
+  await browser.step(1, 0.25);
+  const credits = update.mock.instances.at(-1);
+  const creditsTime = update.mock.calls.at(-1)[0];
+  const opacity = element("credits-page").style.opacity;
+  browser.setHidden(true);
+  browser.time += 60;
+  browser.setHidden(false);
+  await browser.step(1, 0);
+  expect(update.mock.calls.at(-1)[0]).toBeCloseTo(creditsTime);
+  expect(element("credits-page").style.opacity).toBe(opacity);
+  model.actions.toggleMenu();
+  await browser.step(4);
+  model.actions.toggleMenu();
+  await browser.step(1, 0);
+  expect(update.mock.calls.at(-1)[0]).toBeCloseTo(creditsTime);
+  expect(element("credits-page").style.opacity).toBe(opacity);
+  expect(engine.reqId).toBe(0);
+  model.dispose();
+  expect(credits.data).toBeNull();
+  expect(element("credits").hidden).toBe(true);
 });
 
 test("预取最多两张图集，已有与在途资源复用，不抢占活动缓存", async () => {
