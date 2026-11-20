@@ -146,7 +146,7 @@ export class EndingScreen {
     const width = canvas.clientWidth,
       height = canvas.clientHeight;
     if (!width || !height) return;
-    const density = globalThis.devicePixelRatio || 1;
+    const density = Math.min(globalThis.devicePixelRatio || 1, 2);
     const rasterWidth = Math.round(width * density),
       rasterHeight = Math.round(height * density);
     const frame = endingFrame(width, height, elapsed, titleFade);

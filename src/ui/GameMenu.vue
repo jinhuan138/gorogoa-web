@@ -52,7 +52,7 @@ const { ui, settings, actions, t } = inject("gameUi");
             v-show="ui.page === 'title'"
             :inert="ui.page !== 'title'"
           >
-            <h2>Gorogoa</h2>
+            <h2>{{ t("gameName") }}</h2>
             <button id="title-resume" type="button" @click="actions.toggleMenu">
               {{ t("resume") }}
             </button>

@@ -24,9 +24,23 @@ const SLIDE_SECONDS = 2 * FADE + HOLD;
 const LAST_START = (STARTUP_SLIDES.length - 1) * SLIDE_SECONDS;
 
 export class StartupScreen {
-  constructor(button, bank, baseUrl) {
+  constructor(
+    button,
+    bank,
+    baseUrl,
+    gameName = () => "Gorogoa",
+    {
+      now = () => performance.now() / 1000,
+      isPaused = () => false,
+      resume = () => bank.resume(),
+    } = {},
+  ) {
     this.button = button;
     this.bank = bank;
+    this.gameName = gameName;
+    this.now = now;
+    this.isPaused = isPaused;
+    this.resume = resume;
     this.active = true;
     this.showingLast = false;
     this.index = -1;
@@ -38,20 +52,19 @@ export class StartupScreen {
       return image;
     });
     Promise.allSettled(this.images.map((image) => image.decode())).then(() => {
-      this.started = performance.now() / 1000;
+      this.started = this.now();
     });
   }
 
   async enableMusic() {
-    if (!this.active || this.audioRequested) return;
+    if (!this.active || this.isPaused() || this.audioRequested) return;
     this.audioRequested = true;
     try {
-      await this.bank.resume();
+      await this.resume();
+      if (!this.active) return;
       const { buffer } = await this.bank.load(STARTUP_MUSIC);
       const offset =
-        this.started === undefined
-          ? 0
-          : Math.max(0, performance.now() / 1000 - this.started);
+        this.started === undefined ? 0 : Math.max(0, this.now() - this.started);
       if (!this.active || offset >= buffer.duration) return;
       const track = await this.bank.play(STARTUP_MUSIC, {
         channel: "music",
@@ -62,8 +75,7 @@ export class StartupScreen {
       if (!this.active) track.stop();
       else {
         this.track = track;
-        if (this.backgroundFade !== undefined)
-          this.fadeMusic(performance.now() / 1000);
+        if (this.backgroundFade !== undefined) this.fadeMusic(this.now());
       }
     } catch (error) {
       this.audioRequested = false;
@@ -102,6 +114,9 @@ export class StartupScreen {
         this.lastFade === undefined ? 1 : 1 - (time - this.lastFade) / FADE,
       );
     }
+    this.images[index].alt = this.showingLast
+      ? this.gameName()
+      : STARTUP_SLIDES[index].label;
     this.images[index].style.opacity = String(Math.max(0, opacity));
     if (this.lastFade === undefined || time - this.lastFade < FADE) return;
     if (this.backgroundFade === undefined) {

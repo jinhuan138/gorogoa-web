@@ -50,6 +50,7 @@ export function createGameUi() {
     }
     const actions = {
       playUiSound() {},
+      prefetchNavigation() {},
       resetMenu() {
         page("settings");
       },
@@ -119,6 +120,7 @@ export function createGameUi() {
       () => settings.language,
       (code) => {
         document.documentElement.lang = code;
+        document.title = t("gameName");
       },
       { immediate: true },
     );
@@ -142,7 +144,7 @@ export function createGameUi() {
     };
     document.addEventListener("keydown", onKeydown);
     onScopeDispose(() => {
-      actions.disposeInterfaceSounds?.();
+      actions.disposeGame?.();
       document.removeEventListener("fullscreenchange", syncFullscreen);
       document.removeEventListener("fullscreenerror", syncFullscreen);
       document.removeEventListener("keydown", onKeydown);

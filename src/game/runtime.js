@@ -52,7 +52,7 @@ export async function startGame({
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const boardFrame = document.createElement("canvas");
-  boardFrame.width = boardFrame.height = BOARD_SIZE * 2;
+  boardFrame.width = boardFrame.height = canvas.width;
   const frameContext = boardFrame.getContext("2d");
   const board = document.getElementById("board");
   const endingCanvas = document.getElementById("ending");
@@ -60,14 +60,33 @@ export async function startGame({
   const soundBank = new AudioBank({ baseUrl: document.baseURI });
   const interfaceBank = new AudioBank({ baseUrl: document.baseURI });
   const interfaceSounds = new InterfaceSounds(interfaceBank);
+  let backgrounded = document.hidden;
+  let pageHidden = false;
+  let hiddenAt = backgrounded ? performance.now() : null;
+  let hiddenDuration = 0;
+  let disposed = false;
+  let frameRequest = null;
+  let frameRunning = false;
+  let uiSoundGeneration = 0;
+  let rasterScale = canvas.width / BOARD_SIZE;
+  let density = 0;
+  let resizePending = true;
+  const listeners = [];
+  const pageNow = () => (hiddenAt ?? performance.now()) - hiddenDuration;
+  function listen(target, type, callback) {
+    target.addEventListener(type, callback);
+    listeners.push(() => target.removeEventListener(type, callback));
+  }
   actions.playUiSound = async (name) => {
-    if (settings.soundMuted || interfaceSounds.disposed) return;
+    if (settings.soundMuted || disposed || backgrounded) return;
+    const generation = uiSoundGeneration;
     if (!soundDirector) {
       if (!(globalThis.AudioContext || globalThis.webkitAudioContext)) return;
       const snapshot = state;
       await setSound(true);
       if (state !== snapshot) return;
     }
+    if (disposed || backgrounded || generation !== uiSoundGeneration) return;
     return interfaceSounds.play(name);
   };
   actions.disposeInterfaceSounds = () =>
@@ -76,7 +95,23 @@ export async function startGame({
       .catch((error) => console.warn("界面音频关闭失败", error));
   const startupButton = document.getElementById("startup");
   const gameShell = document.getElementById("game-shell");
-  const startup = new StartupScreen(startupButton, soundBank, document.baseURI);
+  const startup = new StartupScreen(
+    startupButton,
+    soundBank,
+    document.baseURI,
+    () => t("gameName"),
+    {
+      now: () => pageNow() / 1000,
+      isPaused: () => backgrounded || disposed,
+      resume: async () => {
+        await unlockBank(soundBank);
+        await syncAudioBank(
+          soundBank,
+          () => backgrounded || settings.soundMuted,
+        );
+      },
+    },
+  );
   let bootReady = false;
   let soundDirector, audioFocus, lastCardsInPlay;
   const read = resources.read;
@@ -98,7 +133,8 @@ export async function startGame({
   actions.setVolume = (channel, volume) => {
     soundBank.setChannelVolume(channel, volume);
     interfaceBank.setChannelVolume(channel, volume);
-    interfaceSounds.adjustVolume(channel, volume, performance.now() / 1000);
+    if (!backgrounded && !disposed)
+      interfaceSounds.adjustVolume(channel, volume, pageNow() / 1000);
   };
   let project,
     state,
@@ -106,7 +142,7 @@ export async function startGame({
     scripts,
     renderer,
     manifest,
-    epoch = performance.now(),
+    epoch = pageNow(),
     viewChange = null,
     dirty = true,
     drag = null,
@@ -142,12 +178,14 @@ export async function startGame({
     DOWN_BUTTON: "down",
   };
   const now = () =>
-    startup.active ? 0 : ((pausedAt ?? performance.now()) - epoch) / 1000;
+    startup.active ? 0 : ((pausedAt ?? pageNow()) - epoch) / 1000;
   const showNotice = (message) => {
     ui.notice = message;
   };
   const showGrid = () => state.storyPhase === "CHAPTERS" || Boolean(closing);
   const inputBusy = () =>
+    disposed ||
+    backgrounded ||
     startup.active ||
     pausedAt !== null ||
     Boolean(viewChange || drag || flight || opening || closing);
@@ -255,12 +293,34 @@ export async function startGame({
     }
     ui.hotspots = hotspots;
   }
+  function prefetchPlan(plan) {
+    const reports = [renderer.buildDrawList(plan.destination.attrs.guid)];
+    if (plan.durationSeconds > 0)
+      reports.push(
+        renderer.buildDrawList(plan.fromLocation.attrs.guid, {
+          viewpoint: sampleTransition(plan, plan.durationSeconds / 2).viewpoint,
+          transitionLocations: plan.locations,
+        }),
+      );
+    return renderer.atlas.prefetch(reportTextureUrls(reports));
+  }
+  actions.prefetchNavigation = (card, transition) => {
+    if (!state || inputBusy() || !canMove(card)) return;
+    const target = project.get(transition);
+    if (!state.getTransitions(card).includes(target)) return;
+    try {
+      return prefetchPlan(planTransition(project, target));
+    } catch (error) {
+      console.warn("下一场景预取未完成", error);
+    }
+  };
   function navigate(card, transition) {
     if (inputBusy()) return;
     if (transition.attrs.hotspotStyle !== "NONE" && !canMove(card.guid)) return;
     if (!state.getTransitions(card.guid).includes(transition)) return;
     try {
       const plan = planTransition(project, transition);
+      prefetchPlan(plan);
       state.targets.set(card.guid, transition.attrs.guid);
       if (plan.durationSeconds > 0) audioFocus = card.guid;
       viewChange = {
@@ -296,7 +356,7 @@ export async function startGame({
     }
   }
   function setHover(event) {
-    if (!state) return;
+    if (!state || backgrounded || disposed) return;
     const card = hitCard(logicalPoint(event)),
       old = [...state.hovered].join(",");
     state.hovered.clear();
@@ -323,7 +383,7 @@ export async function startGame({
           ? "hand"
           : "default";
   }
-  board.addEventListener("pointerdown", (event) => {
+  listen(board, "pointerdown", (event) => {
     if (!state || inputBusy() || !event.isPrimary || event.button !== 0) return;
     setHover(event);
     tap = event.target.closest(".hotspot")
@@ -342,7 +402,7 @@ export async function startGame({
       offset: point.map((v, i) => v - origin[i]),
     };
   });
-  board.addEventListener("pointermove", (event) => {
+  listen(board, "pointermove", (event) => {
     if (!state || !event.isPrimary) return;
     if (press && event.pointerId === press.id && !event.buttons && !drag)
       press = null;
@@ -374,7 +434,7 @@ export async function startGame({
       updateBoardCursor();
     } else setHover(event);
   });
-  board.addEventListener("pointerleave", (event) => {
+  listen(board, "pointerleave", (event) => {
     // 触摸抬起也会触发离开；保留最后触及的卡片，让下一帧处理原版入场条件。
     if (state && !drag && event.pointerType !== "touch") {
       press = tap = null;
@@ -388,7 +448,7 @@ export async function startGame({
     const card = hitCard(point);
     const snapshot = state;
     const shouldPlay = () =>
-      state === snapshot && pausedAt === null && settings.showHints;
+      state === snapshot && !inputBusy() && settings.showHints;
     if (card && !canMove(card.guid)) {
       interfaceSounds.play("nonInteractive", { shouldPlay });
       return;
@@ -406,7 +466,7 @@ export async function startGame({
       interfaceSounds.play("ping", { shouldPlay });
     // 原版 m_sfxPingEmpty 未绑定素材，没有 REGION 热点时保持无声。
   }
-  board.addEventListener("pointerup", (event) => {
+  listen(board, "pointerup", (event) => {
     if (!event.isPrimary || event.button !== 0) return;
     const tapped = event.pointerId === tap?.id ? tap : null;
     if (tapped) tap = null;
@@ -444,16 +504,25 @@ export async function startGame({
     drag = null;
     dirty = true;
   }
-  board.addEventListener("pointercancel", abandonPointer);
-  board.addEventListener("lostpointercapture", (event) => {
+  listen(board, "pointercancel", abandonPointer);
+  listen(board, "lostpointercapture", (event) => {
     // 触摸的隐式捕获从子元素转交棋盘时，子元素的失去捕获事件也会冒泡。
     if (event.target === board) abandonPointer(event);
   });
+  function cancelPointer() {
+    const current = drag;
+    drag = press = tap = null;
+    if (!current) return;
+    cancelCardDrag(links, current);
+    if (board.hasPointerCapture(current.id))
+      board.releasePointerCapture(current.id);
+    dirty = true;
+  }
   function restart({ restoreSaved = false, checkpoint = null } = {}) {
     if (!project) return;
     soundDirector?.stop();
     interfaceSounds.stop();
-    epoch = performance.now();
+    epoch = pageNow();
     graphicTimes.clear();
     layerStatus.clear();
     blockedCards.clear();
@@ -511,18 +580,14 @@ export async function startGame({
     return textureUrls.get(name);
   }
   function showMenu(open, feedback = true) {
-    if (startup.active || !state || open === (pausedAt !== null)) return;
+    if (disposed || startup.active || !state || open === (pausedAt !== null))
+      return;
     if (open) {
-      if (drag) {
-        cancelCardDrag(links, drag);
-        drag = null;
-        dirty = true;
-      }
-      press = tap = null;
-      pausedAt = performance.now();
+      cancelPointer();
+      pausedAt = pageNow();
       actions.resetMenu();
     } else {
-      epoch += performance.now() - pausedAt;
+      epoch += pageNow() - pausedAt;
       pausedAt = null;
     }
     ui.paused = open;
@@ -763,30 +828,61 @@ export async function startGame({
     ctx.stroke();
     ctx.restore();
   }
+  function scheduleFrame() {
+    if (
+      disposed ||
+      backgrounded ||
+      ui.loadFailed ||
+      frameRequest !== null ||
+      frameRunning
+    )
+      return;
+    frameRequest = requestAnimationFrame(frame);
+  }
+  function resizeBoard() {
+    const nextDensity = Math.min(globalThis.devicePixelRatio || 1, 2);
+    if (!resizePending && density === nextDensity) return;
+    density = nextDensity;
+    resizePending = false;
+    const { width, height } = canvas.getBoundingClientRect();
+    if (!width || !height) return;
+    const pixels = Math.min(
+      BOARD_SIZE * 2,
+      Math.max(1, Math.round(Math.min(width, height) * density)),
+    );
+    if (boardFrame.width === pixels && boardFrame.height === pixels) return;
+    boardFrame.width = boardFrame.height = pixels;
+    rasterScale = pixels / BOARD_SIZE;
+    dirty = true;
+  }
   async function frame() {
+    frameRequest = null;
+    if (disposed || backgrounded) return;
+    frameRunning = true;
+    try {
+      resizeBoard();
+      await drawFrame();
+    } finally {
+      frameRunning = false;
+      scheduleFrame();
+    }
+  }
+  async function drawFrame() {
     if (startup.active) {
-      startup.update(performance.now() / 1000, bootReady && !ui.loading);
+      startup.update(pageNow() / 1000, bootReady && !ui.loading);
       if (!startup.active) {
-        epoch = performance.now();
+        epoch = pageNow();
         ui.startupActive = false;
         if (startup.audioRequested && !settings.soundMuted) setSound(true);
       } else if (!bootReady || !startup.showingLast) {
-        requestAnimationFrame(frame);
         return;
       }
     }
     if (!bootReady) return;
-    if (pausedAt !== null) {
-      requestAnimationFrame(frame);
-      return;
-    }
+    if (pausedAt !== null) return;
     try {
       const time = now(),
         viewpoint = navigationView(time);
-      if (canvas.width !== BOARD_SIZE * 2) {
-        canvas.width = canvas.height = BOARD_SIZE * 2;
-        dirty = true;
-      }
       updateBoardMotion(time);
       if (scripts.update(state, time, { displayCoords })) dirty = true;
       if (state.version !== lastStateVersion) {
@@ -915,7 +1011,7 @@ export async function startGame({
         // Decoding a card can yield to the browser. Keep the last finished board visible until every card is painted.
         frameContext.setTransform(1, 0, 0, 1, 0, 0);
         frameContext.clearRect(0, 0, boardFrame.width, boardFrame.height);
-        frameContext.scale(2, 2);
+        frameContext.scale(rasterScale, rasterScale);
         if (showGrid())
           paintGrid(
             frameContext,
@@ -947,6 +1043,7 @@ export async function startGame({
           try {
             await renderer.render(frameContext, card.location, {
               activeTextureUrls,
+              rasterScale,
               report,
             });
           } finally {
@@ -954,10 +1051,20 @@ export async function startGame({
           }
         }
         waitingForBoardTextures = false;
-        if (state !== frameState) {
-          requestAnimationFrame(frame);
+        if (
+          disposed ||
+          backgrounded ||
+          pausedAt !== null ||
+          state !== frameState
+        ) {
+          dirty = true;
           return;
         }
+        if (
+          canvas.width !== boardFrame.width ||
+          canvas.height !== boardFrame.height
+        )
+          canvas.width = canvas.height = boardFrame.width;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(boardFrame, 0, 0);
         updateBoardCursor();
@@ -987,34 +1094,93 @@ export async function startGame({
       showNotice(t("renderError"));
       ui.loading = false;
     }
-    requestAnimationFrame(frame);
   }
-  startupButton.addEventListener("click", () => {
+  listen(startupButton, "click", () => {
+    if (backgrounded || disposed) return;
     if (
       !settings.soundMuted &&
       (globalThis.AudioContext || globalThis.webkitAudioContext)
     ) {
-      interfaceBank
-        .resume()
-        .catch((error) => console.warn("界面声音暂未解锁", error));
+      unlockBank(interfaceBank).catch((error) =>
+        console.warn("界面声音暂未解锁", error),
+      );
       startup.enableMusic();
     }
   });
-  board.addEventListener("pointerdown", () => {
+  listen(board, "pointerdown", () => {
     if (
+      !backgrounded &&
+      !disposed &&
       !settings.soundMuted &&
       !soundDirector &&
       (globalThis.AudioContext || globalThis.webkitAudioContext)
     )
       setSound(true);
   });
-  requestAnimationFrame(frame);
+  function setBackground(hidden) {
+    if (disposed || hidden === backgrounded) return;
+    backgrounded = hidden;
+    if (hidden) {
+      hiddenAt = performance.now();
+      uiSoundGeneration++;
+      cancelPointer();
+      interfaceSounds.stop();
+      if (frameRequest !== null) cancelAnimationFrame(frameRequest);
+      frameRequest = null;
+    } else {
+      hiddenDuration += performance.now() - hiddenAt;
+      hiddenAt = null;
+      resizePending = true;
+      dirty = true;
+      scheduleFrame();
+    }
+    updateAudioPause().catch((error) =>
+      console.warn("后台音频状态更新失败", error),
+    );
+  }
+  listen(document, "visibilitychange", () =>
+    setBackground(document.hidden || pageHidden),
+  );
+  listen(window, "pagehide", () => {
+    pageHidden = true;
+    setBackground(true);
+  });
+  listen(window, "pageshow", () => {
+    pageHidden = false;
+    setBackground(document.hidden);
+  });
+  const onResize = () => {
+    resizePending = true;
+    dirty = true;
+    scheduleFrame();
+  };
+  const resizeObserver = new ResizeObserver(onResize);
+  resizeObserver.observe(canvas);
+  listen(window, "resize", onResize);
+  actions.disposeGame = () => {
+    if (disposed) return;
+    disposed = true;
+    cancelPointer();
+    if (frameRequest !== null) cancelAnimationFrame(frameRequest);
+    frameRequest = null;
+    for (const remove of listeners) remove();
+    resizeObserver.disconnect();
+    startup.finish();
+    soundDirector?.stop();
+    soundBank.stopAll();
+    actions.disposeInterfaceSounds();
+    soundBank.context
+      ?.close()
+      .catch((error) => console.warn("游戏音频关闭失败", error));
+  };
+  scheduleFrame();
   try {
     const [{ project: loaded }, loadedManifest, atlases] = await Promise.all([
       loadProject(),
       read("assets/manifest.json"),
       read("assets/data/atlases.json"),
     ]);
+    if (disposed) return;
     markStartup("data-loaded");
     project = loaded;
     manifest = loadedManifest;
@@ -1088,13 +1254,48 @@ export async function startGame({
 
   // 用户手势启用原版声音，同时核对实际浏览器解码结果；不把容器识别当作可播放。
 
+  async function unlockBank(bank) {
+    await bank.resume();
+    if (disposed) {
+      if (bank.context.state !== "closed") await bank.context.close();
+    } else if (backgrounded) await bank.context.suspend();
+  }
+  async function syncAudioBank(bank, shouldPause, director) {
+    if (!bank.context || bank.context.state === "closed" || disposed) return;
+    let pause;
+    do {
+      pause = shouldPause();
+      if (pause) {
+        if (director) await director.suspend();
+        else await bank.context.suspend();
+      } else if (bank.context.state !== "running") {
+        await bank.resume();
+        if (disposed && bank.context.state !== "closed")
+          await bank.context.close();
+      }
+    } while (
+      !disposed &&
+      bank.context.state !== "closed" &&
+      pause !== shouldPause()
+    );
+  }
   async function updateAudioPause() {
-    if (!soundDirector) return;
-    if (settings.soundMuted || pausedAt !== null) await soundDirector.suspend();
-    else {
-      await soundDirector.resume();
+    await Promise.all([
+      syncAudioBank(
+        soundBank,
+        () => backgrounded || settings.soundMuted || pausedAt !== null,
+        soundDirector,
+      ),
+      syncAudioBank(interfaceBank, () => backgrounded || settings.soundMuted),
+    ]);
+    if (
+      soundDirector &&
+      !disposed &&
+      !backgrounded &&
+      !settings.soundMuted &&
+      pausedAt === null
+    )
       syncSoundtrack();
-    }
   }
 
   async function setSound(enabled, remember = false) {
@@ -1104,7 +1305,7 @@ export async function startGame({
     try {
       if (enabled) {
         // 两个上下文都在用户手势内发起解锁，必须早于任何网络请求。
-        await Promise.all([soundBank.resume(), interfaceBank.resume()]);
+        await Promise.all([unlockBank(soundBank), unlockBank(interfaceBank)]);
         if (interfaceSounds.disposed) return;
         if (!soundDirector) {
           const { events } = await read("assets/audio/events.json");

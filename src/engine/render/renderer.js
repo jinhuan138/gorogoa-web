@@ -956,15 +956,20 @@ export class SceneRenderer {
         }
       }),
     );
+    const surfaceSize = Math.max(
+      1,
+      Math.ceil(CARD_SIZE * (options.rasterScale ?? 2)),
+    );
+    const surfaceScale = surfaceSize / CARD_SIZE;
     const surface = () => {
       const canvas =
         typeof OffscreenCanvas === "function"
-          ? new OffscreenCanvas(CARD_SIZE * 2, CARD_SIZE * 2)
+          ? new OffscreenCanvas(surfaceSize, surfaceSize)
           : ctx.canvas?.ownerDocument?.createElement("canvas");
       if (!canvas) throw new Error("合成需要Canvas离屏画布");
-      canvas.width = canvas.height = CARD_SIZE * 2;
+      canvas.width = canvas.height = surfaceSize;
       const context = canvas.getContext("2d");
-      context.scale(2, 2);
+      context.scale(surfaceScale, surfaceScale);
       return [canvas, context];
     };
     const paint = (target, list) => {
@@ -982,7 +987,7 @@ export class SceneRenderer {
                 ...this.atlas.crop(item.region),
                 ...item.dest,
               );
-              layer.setTransform(2, 0, 0, 2, 0, 0);
+              layer.setTransform(surfaceScale, 0, 0, surfaceScale, 0, 0);
               paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
               target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
             } else {
@@ -1021,7 +1026,7 @@ export class SceneRenderer {
             layer.transform(...item.matrix);
             layer.fillStyle = item.color;
             layer.fillRect(...item.dest);
-            layer.setTransform(2, 0, 0, 2, 0, 0);
+            layer.setTransform(surfaceScale, 0, 0, surfaceScale, 0, 0);
             paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
             target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
           } else {

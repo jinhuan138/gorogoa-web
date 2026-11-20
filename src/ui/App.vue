@@ -12,7 +12,7 @@ provide("gameUi", props.model);
 <template>
   <button id="startup" type="button" :aria-label="t('startup')"></button>
   <main id="game-shell" :inert="ui.startupActive">
-    <h1 class="sr-only">Gorogoa</h1>
+    <h1 class="sr-only">{{ t("gameName") }}</h1>
     <div
       id="board"
       :inert="ui.paused"
@@ -50,7 +50,11 @@ provide("gameUi", props.model);
     @click="actions.toggleMenu"
   ></button>
   <GameMenu />
-  <canvas id="ending" aria-label="Gorogoa 结局画面" hidden></canvas>
+  <canvas
+    id="ending"
+    :aria-label="`${t('gameName')} · ${t('ending')}`"
+    hidden
+  ></canvas>
   <section id="credits" :aria-label="t('credits')" hidden>
     <div id="credits-page" lang="en"></div>
     <button

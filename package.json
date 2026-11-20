@@ -2,6 +2,7 @@
   "name": "gorogoa-web",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@10.26.1",
   "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

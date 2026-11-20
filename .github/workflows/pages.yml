@@ -16,18 +16,19 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - run: npm ci
-      - run: npm run format:check
-      - run: npm run test:ui
-      - run: npm run check:codecs
-      - run: npm run check:assets
-      - run: node tools/checks/check-prologue.mjs
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format:check
+      - run: pnpm test
+      - run: pnpm run check:codecs
+      - run: pnpm run check:assets
       - run: node tools/checks/check-prologue.mjs --ending
       - run: node tools/checks/check-prologue.mjs --chapter-menu
-      - run: npm run build
+      - run: pnpm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

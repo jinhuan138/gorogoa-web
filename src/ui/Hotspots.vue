@@ -30,6 +30,9 @@ function style(hotspot) {
       :class="{ back: hotspot.image }"
       :style="style(hotspot)"
       :aria-label="t(hotspot.label)"
+      @pointerenter="actions.prefetchNavigation(hotspot.card, hotspot.id)"
+      @pointerdown="actions.prefetchNavigation(hotspot.card, hotspot.id)"
+      @focus="actions.prefetchNavigation(hotspot.card, hotspot.id)"
       @click="actions.navigate(hotspot.card, hotspot.id)"
     ></button>
   </div>

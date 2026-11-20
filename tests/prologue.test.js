@@ -206,7 +206,7 @@ test(mode, async () => {
   assert.deepEqual(startupLog, [
     "Annapurna Interactive",
     "Buried Signal",
-    "Gorogoa",
+    "画中世界",
   ]);
   assert.equal(splash.hidden, true, "启动动画要让出棋盘");
   assert.equal(ids["game-shell"].inert, false);

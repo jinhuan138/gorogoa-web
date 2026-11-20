@@ -1,4 +1,5 @@
 const english = {
+  gameName: "Gorogoa",
   menu: "Game menu",
   board: "Game board",
   hotspots: "Interactive areas",
@@ -45,6 +46,7 @@ const english = {
 };
 
 const simplified = {
+  gameName: "画中世界",
   menu: "游戏菜单",
   board: "游戏区域",
   hotspots: "可探索的位置",
@@ -90,6 +92,7 @@ const simplified = {
 };
 
 const traditional = {
+  gameName: "畫中世界",
   menu: "遊戲選單",
   board: "遊戲區域",
   hotspots: "可探索的位置",

@@ -10,6 +10,15 @@ import { AudioBank } from "../src/engine/audio/audio.js";
 import { SoundtrackDirector } from "../src/engine/audio/soundtrack.js";
 import { InterfaceSounds } from "../src/engine/audio/interface.js";
 import { createBrowser } from "./helpers/browser.js";
+import { detectLanguage } from "../src/i18n/index.js";
+import { StartupScreen } from "../src/game/screens/startup.js";
+import { AtlasStore } from "../src/engine/render/atlas.js";
+import { SceneRenderer } from "../src/engine/render/renderer.js";
+import { ProjectScripts } from "../src/engine/model/scripts.js";
+import { RuntimeState } from "../src/engine/model/state.js";
+import { BOARD_SIZE } from "../src/engine/model/board.js";
+import { CARD_SIZE } from "../src/engine/render/camera.js";
+import { EndingScreen } from "../src/game/screens/ending.js";
 
 let browser, model, wrapper;
 beforeEach(() => {
@@ -49,6 +58,84 @@ async function escape() {
   );
   await nextTick();
 }
+
+test.each([
+  [["en-GB"], "en"],
+  [["zh-SG"], "zh-CN"],
+  [["zh-HK"], "zh-TW"],
+  [["zh-Hant"], "zh-TW"],
+  [["zh-Hans-TW"], "zh-CN"],
+  [["ES-mx"], "es-MX"],
+  [["pt-PT"], "pt-BR"],
+  [["ja-JP", "en"], "ja"],
+  [["fi-FI", "fr-FR"], "fr"],
+  [["en-US", "zh-CN"], "en"],
+  [["fi-FI"], "en"],
+  [[], "en"],
+])("浏览器偏好 %j 匹配 %s", (codes, expected) => {
+  expect(detectLanguage(codes)).toBe(expected);
+});
+
+test("首次按浏览器语言显示名称，手动切换同步标题、菜单与启动辅助文本", async () => {
+  vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US", "zh-CN"]);
+  mountUi();
+  await nextTick();
+  expect(model.settings.language).toBe("en");
+  expect(document.title).toBe("Gorogoa");
+  expect(browser.store.has("gorogoa-web-language")).toBe(false);
+  const startup = new StartupScreen(
+    element("startup"),
+    {},
+    document.baseURI,
+    () => model.t("gameName"),
+  );
+  await flushPromises();
+  const logoUrl = startup.images.at(-1).src;
+  for (const [code, name] of [
+    ["en", "Gorogoa"],
+    ["zh-CN", "画中世界"],
+    ["zh-TW", "畫中世界"],
+    ["fr", "Gorogoa"],
+  ]) {
+    await model.actions.chooseLanguage(code);
+    startup.update(7, false);
+    expect(document.title).toBe(name);
+    expect(document.documentElement.lang).toBe(code);
+    expect(wrapper.get("h1").text()).toBe(name);
+    expect(wrapper.get("#title-panel h2").text()).toBe(name);
+    expect(element("ending").getAttribute("aria-label")).toBe(
+      `${name} · ${model.t("ending")}`,
+    );
+    expect(startup.images.at(-1).alt).toBe(name);
+    expect(startup.images.at(-1).src).toBe(logoUrl);
+  }
+  expect(browser.store.get("gorogoa-web-language")).toBe("fr");
+});
+
+test("已保存的手动语言优先于浏览器偏好", async () => {
+  vi.spyOn(navigator, "languages", "get").mockReturnValue(["en-US"]);
+  browser.store.set("gorogoa-web-language", "zh-TW");
+  mountUi();
+  await nextTick();
+  expect(model.settings.language).toBe("zh-TW");
+  expect(document.title).toBe("畫中世界");
+});
+
+test("无语言偏好列表时使用 navigator.language", () => {
+  vi.spyOn(navigator, "languages", "get").mockReturnValue([]);
+  vi.spyOn(navigator, "language", "get").mockReturnValue("zh-HK");
+  mountUi();
+  expect(model.settings.language).toBe("zh-TW");
+  expect(document.title).toBe("畫中世界");
+});
+
+test("无效的已保存语言重新按浏览器偏好选择", () => {
+  vi.spyOn(navigator, "languages", "get").mockReturnValue(["de-DE"]);
+  browser.store.set("gorogoa-web-language", "invalid");
+  mountUi();
+  expect(model.settings.language).toBe("de");
+  expect(document.title).toBe("Gorogoa");
+});
 
 test("语言、RTL、焦点与 Escape 返回由真实组件管理", async () => {
   mountUi();
@@ -212,7 +299,17 @@ function mockAudio() {
   const log = [];
   vi.spyOn(AudioBank.prototype, "resume").mockImplementation(async function () {
     log.push("resume");
-    this.context = { state: "running", close: vi.fn() };
+    if (!this.context) {
+      const context = { state: "running" };
+      context.suspend = vi.fn(async () => {
+        context.state = "suspended";
+      });
+      context.close = vi.fn(async () => {
+        context.state = "closed";
+      });
+      this.context = context;
+    }
+    this.context.state = "running";
   });
   vi.spyOn(AudioBank.prototype, "play").mockImplementation(async function (
     name,
@@ -221,7 +318,11 @@ function mockAudio() {
     if (options.shouldPlay && !options.shouldPlay()) return null;
     return { stop: vi.fn(() => options.onEnd?.()) };
   });
-  vi.spyOn(SoundtrackDirector.prototype, "suspend").mockResolvedValue();
+  vi.spyOn(SoundtrackDirector.prototype, "suspend").mockImplementation(
+    function () {
+      return this.bank.context.suspend();
+    },
+  );
   vi.spyOn(SoundtrackDirector.prototype, "syncLocation").mockImplementation(
     () => {},
   );
@@ -496,3 +597,522 @@ test("挂载销毁后移除监听与设置 watch，重复挂载不会重复响�
   await escape();
   expect(old.actions.toggleMenu).not.toHaveBeenCalled();
 });
+
+async function firstHotspot() {
+  element("board").dispatchEvent(
+    new PointerEvent("pointermove", {
+      clientX: 358,
+      clientY: 358,
+      pointerId: 1,
+      isPrimary: true,
+    }),
+  );
+  for (let i = 0; i < 120 && model.ui.hotspots.length === 0; i++) {
+    await browser.step();
+    await nextTick();
+  }
+  expect(model.ui.hotspots.length).toBeGreaterThan(0);
+  return model.ui.hotspots[0];
+}
+
+test("启动页后台停帧，恢复保留 Logo 与淡入进度", async () => {
+  await bootRuntime();
+  await browser.step(2);
+  const image = element("startup").firstElementChild;
+  const opacity = image.style.opacity;
+  browser.setHidden(true);
+  browser.time += 60;
+  expect(browser.pendingFrame).toBe(false);
+  browser.setHidden(false);
+  await browser.step(1, 0);
+  expect(element("startup").firstElementChild).toBe(image);
+  expect(image.style.opacity).toBe(opacity);
+  expect(model.ui.startupActive).toBe(true);
+});
+
+test("游戏转场与脚本时钟不计后台时间，pagehide/pageshow 同样冻结", async () => {
+  const update = vi.spyOn(ProjectScripts.prototype, "update");
+  await bootRuntime();
+  await browser.step(44);
+  const hotspot = await firstHotspot();
+  model.actions.navigate(hotspot.card, hotspot.id);
+  await browser.step(1, 0.1);
+  const time = update.mock.calls.at(-1)[1];
+  const location = element("game").dataset.locations;
+  window.dispatchEvent(new Event("pagehide"));
+  browser.time += 80;
+  expect(browser.pendingFrame).toBe(false);
+  window.dispatchEvent(new Event("pageshow"));
+  await browser.step(1, 0);
+  expect(update.mock.calls.at(-1)[1]).toBeCloseTo(time);
+  expect(element("game").dataset.locations).toBe(location);
+  await browser.step(12);
+  expect(element("game").dataset.locations).not.toBe(location);
+});
+
+test("后台暂停两套音频且清理短音效，恢复保留手动暂停与静音", async () => {
+  mockAudio();
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  await browser.step(44);
+  await model.actions.toggleSound();
+  const play = vi.spyOn(InterfaceSounds.prototype, "play");
+  model.actions.toggleMenu();
+  await flushPromises();
+  const sounds = play.mock.instances[0];
+  const gameBank = SoundtrackDirector.prototype.suspend.mock.instances[0].bank;
+  const stop = vi.spyOn(SoundtrackDirector.prototype, "stop");
+  browser.setHidden(true);
+  await flushPromises();
+  expect(gameBank.context.state).toBe("suspended");
+  expect(sounds.bank.context.state).toBe("suspended");
+  expect(sounds.slots.size).toBe(0);
+  await model.actions.playUiSound("menu");
+  expect(sounds.slots.size).toBe(0);
+  browser.time += 40;
+  browser.setHidden(false);
+  await flushPromises();
+  expect(model.ui.paused).toBe(true);
+  expect(gameBank.context.state).toBe("suspended");
+  expect(sounds.bank.context.state).toBe("running");
+  expect(stop).not.toHaveBeenCalled();
+  model.actions.toggleMenu();
+  await flushPromises();
+  expect(gameBank.context.state).toBe("running");
+  await model.actions.toggleSound();
+  browser.setHidden(true);
+  browser.setHidden(false);
+  await flushPromises();
+  expect(gameBank.context.state).toBe("suspended");
+  expect(sounds.bank.context.state).toBe("suspended");
+});
+
+test("异步声音解锁跨入后台后仍暂停，不因网络完成而偷跑", async () => {
+  mockAudio();
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  const resume = AudioBank.prototype.resume.getMockImplementation();
+  let release, bank;
+  AudioBank.prototype.resume.mockImplementationOnce(async function () {
+    bank = this;
+    await new Promise((resolve) => {
+      release = resolve;
+    });
+    await resume.call(this);
+  });
+  const enabled = model.actions.toggleSound();
+  browser.setHidden(true);
+  release();
+  await enabled;
+  expect(bank.context.state).toBe("suspended");
+  browser.setHidden(false);
+  await flushPromises();
+  expect(bank.context.state).toBe("running");
+});
+
+test("解码等待期间隐藏不发布旧帧，快速恢复与销毁不重复安排 RAF", async () => {
+  await bootRuntime();
+  await browser.step(44);
+  const context = element("game").getContext("2d");
+  const publish = vi.spyOn(context, "drawImage");
+  let release;
+  vi.spyOn(SceneRenderer.prototype, "render").mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  browser.resize(320, 320, 2);
+  const pending = browser.step();
+  expect(release).toBeTypeOf("function");
+  browser.setHidden(true);
+  browser.time += 20;
+  release();
+  await pending;
+  expect(publish).not.toHaveBeenCalled();
+  expect(browser.pendingFrame).toBe(false);
+  browser.setHidden(false);
+  browser.setHidden(true);
+  browser.setHidden(false);
+  await browser.step();
+  expect(publish).toHaveBeenCalledTimes(1);
+  SceneRenderer.prototype.render.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  browser.resize(350, 350, 2);
+  const resumed = browser.step();
+  browser.setHidden(true);
+  browser.time += 20;
+  browser.setHidden(false);
+  expect(browser.pendingFrame).toBe(false);
+  release();
+  await resumed;
+  expect(browser.pendingFrame).toBe(true);
+  expect(publish).toHaveBeenCalledTimes(2);
+  model.dispose();
+  expect(browser.pendingFrame).toBe(false);
+  expect(browser.observerCount).toBe(0);
+  browser.setHidden(true);
+  browser.setHidden(false);
+  browser.resize(360, 360);
+  expect(browser.pendingFrame).toBe(false);
+});
+
+test.each([
+  [320, 1, 320],
+  [320, 2, 640],
+  [320, 3, 640],
+  [1000, 3, BOARD_SIZE * 2],
+])("显示宽度 %i、DPR %i 的棋盘分辨率为 %i", async (width, dpr, expected) => {
+  browser.resize(width, width, dpr);
+  await bootRuntime();
+  await browser.step(44);
+  expect(element("game").width).toBe(expected);
+  expect(element("game").height).toBe(expected);
+});
+
+test("旋转、像素比变化与零尺寸保持棋盘比例，不影响触摸坐标", async () => {
+  const step = vi.spyOn(RuntimeState.prototype, "step");
+  browser.resize(320, 320, 1);
+  const render = vi.spyOn(SceneRenderer.prototype, "render");
+  await bootRuntime();
+  await browser.step(44);
+  expect(render.mock.calls.at(-1)[2].rasterScale).toBeCloseTo(320 / BOARD_SIZE);
+  browser.resize(360, 360, 2);
+  await browser.step();
+  expect(element("game").width).toBe(720);
+  browser.resize(0, 0);
+  await browser.step();
+  expect(element("game").width).toBe(720);
+  browser.resize(360, 360, 1);
+  await browser.step();
+  expect(element("game").width).toBe(360);
+  vi.stubGlobal("devicePixelRatio", 2);
+  await browser.step();
+  expect(element("game").width).toBe(720);
+  element("board").dispatchEvent(
+    new PointerEvent("pointermove", {
+      clientX: 180,
+      clientY: 180,
+      pointerId: 1,
+      isPrimary: true,
+      pointerType: "touch",
+    }),
+  );
+  const state = step.mock.instances.at(-1);
+  expect(state.hovered.has(state.project.tree.attrs.staringCard)).toBe(true);
+  for (let i = 0; i < 120 && model.ui.hotspots.length === 0; i++)
+    await browser.step();
+  expect(model.ui.hotspots.length).toBeGreaterThan(0);
+});
+
+test("热点的鼠标、触摸与键盘意图均触发预取但不导航", async () => {
+  mountUi();
+  model.ui.paused = false;
+  model.ui.hotspots = [
+    { id: "next", card: "card", label: "explore", rect: [0, 0, 10, 10] },
+  ];
+  const prefetch = (model.actions.prefetchNavigation = vi.fn());
+  model.actions.navigate = vi.fn();
+  await nextTick();
+  const hotspot = element("hotspots").firstElementChild;
+  hotspot.dispatchEvent(new PointerEvent("pointerenter"));
+  hotspot.dispatchEvent(
+    new PointerEvent("pointerdown", { pointerType: "touch" }),
+  );
+  hotspot.focus();
+  expect(prefetch.mock.calls).toEqual(Array(3).fill(["card", "next"]));
+  expect(model.actions.navigate).not.toHaveBeenCalled();
+});
+
+test("下一场景预测只请求纹理，不提前改变卡片位置、目标或脚本", async () => {
+  let state;
+  const step = RuntimeState.prototype.step;
+  vi.spyOn(RuntimeState.prototype, "step").mockImplementation(function (
+    ...args
+  ) {
+    state = this;
+    return step.apply(this, args);
+  });
+  const prefetch = vi
+    .spyOn(AtlasStore.prototype, "prefetch")
+    .mockResolvedValue([]);
+  await bootRuntime();
+  await browser.step(44);
+  const hotspot = await firstHotspot();
+  const location = new Map(state.locations),
+    targets = new Map(state.targets);
+  const update = vi.spyOn(ProjectScripts.prototype, "update");
+  model.actions.prefetchNavigation(hotspot.card, hotspot.id);
+  expect(prefetch).toHaveBeenCalledTimes(1);
+  expect(prefetch.mock.calls[0][0].length).toBeGreaterThan(0);
+  expect(state.locations).toEqual(location);
+  expect(state.targets).toEqual(targets);
+  expect(update).not.toHaveBeenCalled();
+  browser.setHidden(true);
+  model.actions.prefetchNavigation(hotspot.card, hotspot.id);
+  expect(prefetch).toHaveBeenCalledTimes(1);
+  browser.setHidden(false);
+  model.actions.navigate(hotspot.card, hotspot.id);
+  expect(prefetch).toHaveBeenCalledTimes(2);
+});
+
+function atlasStore(options = {}) {
+  return new AtlasStore(
+    {
+      textures: ["a", "b", "c", "d", "huge"].map((key) => ({
+        key,
+        url: `assets/textures/${key}.png`,
+        width: key === "huge" ? 4096 : 512,
+        height: key === "huge" ? 4096 : 512,
+      })),
+    },
+    { entries: [] },
+    { baseUrl: document.baseURI, ...options },
+  );
+}
+const atlasUrl = (key) => `assets/textures/${key}.png`;
+
+test("首次在后台加载只准备数据，前台从第一张 Logo 开始", async () => {
+  browser.setHidden(true);
+  await bootRuntime();
+  browser.time += 80;
+  expect(browser.pendingFrame).toBe(false);
+  browser.setHidden(false);
+  await browser.step(1, 0);
+  expect(element("startup").firstElementChild.alt).toBe(
+    "Annapurna Interactive",
+  );
+  expect(model.ui.startupActive).toBe(true);
+});
+
+test("菜单暂停与后台冻结叠加后，关闭菜单不重复扣除时间", async () => {
+  const update = vi.spyOn(ProjectScripts.prototype, "update");
+  await bootRuntime();
+  await browser.step(44);
+  const time = update.mock.calls.at(-1)[1];
+  model.actions.toggleMenu();
+  await browser.step(2);
+  browser.setHidden(true);
+  browser.time += 70;
+  browser.setHidden(false);
+  await browser.step(2, 5);
+  model.actions.toggleMenu();
+  await browser.step(1, 0);
+  expect(update.mock.calls.at(-1)[1]).toBeCloseTo(time);
+});
+
+test("启动序曲随后台暂停，恢复保留同一音源及播放进度", async () => {
+  mockAudio();
+  vi.stubGlobal("AudioContext", class {});
+  vi.spyOn(AudioBank.prototype, "load").mockResolvedValue({
+    buffer: { duration: 100 },
+  });
+  const enable = vi.spyOn(StartupScreen.prototype, "enableMusic");
+  await bootRuntime();
+  await browser.step(2);
+  element("startup").click();
+  await enable.mock.results[0].value;
+  const startup = enable.mock.instances[0];
+  const track = startup.track;
+  expect(track).toBeTruthy();
+  browser.setHidden(true);
+  browser.time += 60;
+  await flushPromises();
+  expect(startup.bank.context.state).toBe("suspended");
+  expect(track.stop).not.toHaveBeenCalled();
+  browser.setHidden(false);
+  await flushPromises();
+  await browser.step(1, 0);
+  expect(startup.bank.context.state).toBe("running");
+  expect(startup.track).toBe(track);
+});
+
+test("启动声音解锁中销毁，迟到的上下文也被关闭", async () => {
+  mockAudio();
+  vi.stubGlobal("AudioContext", class {});
+  const enable = vi.spyOn(StartupScreen.prototype, "enableMusic");
+  await bootRuntime();
+  await browser.step(2);
+  const resume = AudioBank.prototype.resume.getMockImplementation();
+  let release;
+  AudioBank.prototype.resume.mockImplementationOnce(resume);
+  AudioBank.prototype.resume.mockImplementationOnce(async function () {
+    await new Promise((resolve) => {
+      release = resolve;
+    });
+    await resume.call(this);
+  });
+  element("startup").click();
+  model.dispose();
+  release();
+  await enable.mock.results[0].value;
+  const startup = enable.mock.instances[0];
+  expect(startup.active).toBe(false);
+  expect(startup.bank.context.state).toBe("closed");
+  expect(startup.bank.context.close).toHaveBeenCalledTimes(1);
+  expect(browser.pendingFrame).toBe(false);
+});
+
+test("片尾动画使用冻结时钟，结局画布的像素密度也限制为 2", async () => {
+  const draw = vi.spyOn(EndingScreen.prototype, "draw");
+  await bootRuntime();
+  const gl = new Proxy(
+    {
+      TEXTURE0: 1000,
+      getShaderParameter: () => true,
+      getProgramParameter: () => true,
+    },
+    { get: (target, key) => target[key] ?? (() => {}) },
+  );
+  Object.defineProperties(element("ending"), {
+    clientWidth: { value: 360 },
+    clientHeight: { value: 600 },
+    getContext: { value: (type) => (type === "webgl" ? gl : null) },
+  });
+  vi.stubGlobal("devicePixelRatio", 3);
+  await browser.step(44);
+  await model.actions.loadChapter(6);
+  for (let i = 0; i < 240 && draw.mock.calls.length === 0; i++)
+    await browser.step();
+  expect(draw).toHaveBeenCalled();
+  const elapsed = draw.mock.calls.at(-1)[0];
+  browser.setHidden(true);
+  browser.time += 60;
+  browser.setHidden(false);
+  await browser.step(1, 0);
+  expect(draw.mock.calls.at(-1)[0]).toBeCloseTo(elapsed);
+  expect(element("ending").width).toBe(720);
+  expect(element("ending").height).toBe(1200);
+});
+
+test("预取最多两张图集，已有与在途资源复用，不抢占活动缓存", async () => {
+  const store = atlasStore({ maxCachedTextures: 3 });
+  await store.image({ textureUrl: atlasUrl("a") });
+  store.retainActive([atlasUrl("a")]);
+  const releases = [];
+  const decode = vi
+    .spyOn(HTMLImageElement.prototype, "decode")
+    .mockImplementation(() => new Promise((resolve) => releases.push(resolve)));
+  decode.mockClear();
+  const pending = store.prefetch([atlasUrl("b"), atlasUrl("c"), atlasUrl("d")]);
+  store.prefetch([atlasUrl("b"), atlasUrl("c"), atlasUrl("d")]);
+  const reused = store.image({ textureUrl: atlasUrl("b") });
+  expect(decode).toHaveBeenCalledTimes(2);
+  expect(store.pending.size).toBe(2);
+  expect(store.images.has(atlasUrl("a"))).toBe(true);
+  store.prune();
+  expect(store.images.has(atlasUrl("b"))).toBe(true);
+  releases.forEach((release) => release());
+  await pending;
+  await reused;
+  expect(store.images.size).toBe(3);
+});
+
+test("预取解码预算限制大图，缓存满时只淘汰非活动 LRU", async () => {
+  const store = atlasStore({
+    maxCachedTextures: 2,
+    prefetchBudget: 1024 * 1024,
+  });
+  await store.image({ textureUrl: atlasUrl("a") });
+  await store.image({ textureUrl: atlasUrl("b") });
+  store.retainActive([atlasUrl("b")]);
+  await store.prefetch([atlasUrl("huge"), atlasUrl("c"), atlasUrl("d")]);
+  expect(store.images.has(atlasUrl("a"))).toBe(false);
+  expect(store.images.has(atlasUrl("b"))).toBe(true);
+  expect(store.images.has(atlasUrl("c"))).toBe(true);
+  expect(store.images.has(atlasUrl("d"))).toBe(false);
+  expect(store.images.has(atlasUrl("huge"))).toBe(false);
+  store.retainActive([atlasUrl("b"), atlasUrl("c")]);
+  await store.prefetch([atlasUrl("d")]);
+  expect(store.images.has(atlasUrl("d"))).toBe(false);
+});
+
+test("改变目标清理未使用的预取，失败图集允许正式绘制重试", async () => {
+  const store = atlasStore();
+  const decode = vi
+    .spyOn(HTMLImageElement.prototype, "decode")
+    .mockResolvedValue();
+  await store.prefetch([atlasUrl("a"), atlasUrl("b")]);
+  await store.prefetch([atlasUrl("c")]);
+  expect(store.images.has(atlasUrl("a"))).toBe(false);
+  expect(store.images.has(atlasUrl("b"))).toBe(false);
+  decode.mockRejectedValueOnce(new Error("offline"));
+  await store.prefetch([atlasUrl("d")]);
+  expect(store.images.has(atlasUrl("d"))).toBe(false);
+  await store.image({ textureUrl: atlasUrl("d") });
+  expect(store.images.has(atlasUrl("d"))).toBe(true);
+});
+
+test.each([0.75, 1.5, 2])(
+  "遮罩、阴影与雾效合成画布按 %f 比例栅格化",
+  async (rasterScale) => {
+    browser.captureDrawing();
+    const renderer = new SceneRenderer({}, { textures: [] }, { entries: [] });
+    const fill = {
+      kind: "fill",
+      alpha: 1,
+      matrix: [1, 0, 0, 1, 0, 0],
+      color: "#fff",
+      dest: [0, 0, CARD_SIZE, CARD_SIZE],
+      haze: [1, 1, 1, 0.5],
+    };
+    const image = {
+      ...fill,
+      kind: undefined,
+      region: { textureUrl: atlasUrl("a") },
+    };
+    vi.spyOn(renderer.atlas, "image").mockResolvedValue(new Image());
+    vi.spyOn(renderer.atlas, "crop").mockReturnValue([0, 0, 1, 1]);
+    const report = {
+      drawn: [
+        image,
+        fill,
+        {
+          kind: "mask",
+          matrix: fill.matrix,
+          alpha: 1,
+          mask: [fill],
+          children: [fill],
+        },
+        {
+          kind: "shadow",
+          matrix: fill.matrix,
+          alpha: 1,
+          caster: [fill],
+          receiver: [fill],
+          fillWithBlack: true,
+          haze: fill.haze,
+        },
+      ],
+      missing: [],
+    };
+    await renderer.render(
+      document.createElement("canvas").getContext("2d"),
+      "test",
+      { report, rasterScale },
+    );
+    const pixels = Math.ceil(CARD_SIZE * rasterScale);
+    expect(browser.surfaces.length).toBeGreaterThan(6);
+    for (const surface of browser.surfaces) {
+      expect(surface.width).toBe(pixels);
+      expect(surface.height).toBe(pixels);
+      expect(surface.context.scale).toHaveBeenCalledWith(
+        pixels / CARD_SIZE,
+        pixels / CARD_SIZE,
+      );
+      for (const call of surface.context.setTransform.mock.calls)
+        expect(call).toEqual([
+          pixels / CARD_SIZE,
+          0,
+          0,
+          pixels / CARD_SIZE,
+          0,
+          0,
+        ]);
+    }
+  },
+);

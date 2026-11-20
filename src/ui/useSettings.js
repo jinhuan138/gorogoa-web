@@ -1,5 +1,5 @@
 import { reactive, watch } from "vue";
-import { supportsLanguage } from "../i18n/index.js";
+import { detectLanguage, supportsLanguage } from "../i18n/index.js";
 
 import { SAVE_KEY } from "../engine/model/storage.js";
 const keys = {
@@ -38,7 +38,13 @@ export function useSettings() {
     return Number.isFinite(value) && value >= 0 && value <= 1 ? value : 1;
   };
   const settings = reactive({
-    language: supportsLanguage(savedLanguage) ? savedLanguage : "zh-CN",
+    language: supportsLanguage(savedLanguage)
+      ? savedLanguage
+      : detectLanguage(
+          navigator.languages.length
+            ? navigator.languages
+            : [navigator.language],
+        ),
     showHints: access("getItem", keys.showHints) !== "off",
     soundMuted: access("getItem", keys.soundMuted) === "off",
     maxChapter:
