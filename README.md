@@ -1,5 +1,7 @@
 # Gorogoa 网页移植
 
+**在线游玩：** <https://jinhuan138.github.io/gorogoa-web/>
+
 本项目使用原版数据和素材，还原全部游戏画面、谜题、动画和声音，并用 Vite 构建为 GitHub Pages 静态站点。
 
 游戏入口为 `index.html`，素材核对工具为 `assets.html`。界面层使用 Vue 和 Sass；游戏时钟、状态机、关键帧、Canvas 绘制和声音时间轴仍是纯 JavaScript。完整通关回归覆盖序章、五个正章、五段终局回忆、尾声和结局；主游戏各场景的音画时序与原版的逐项对照仍待验收。
