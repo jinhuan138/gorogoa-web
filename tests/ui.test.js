@@ -792,6 +792,35 @@ test("片尾名单跨多页跳帧、结束、重新开始和重置后不再更�
   expect(engine.reqId).toBe(0);
 });
 
+test("手机横屏居中棋盘保持正方形，触摸按屏幕偏移映射到游戏坐标", async () => {
+  const step = vi.spyOn(RuntimeState.prototype, "step");
+  browser.resize(300, 300, 2);
+  vi.spyOn(
+    HTMLCanvasElement.prototype,
+    "getBoundingClientRect",
+  ).mockReturnValue({
+    left: 180,
+    top: 8,
+    width: 300,
+    height: 300,
+  });
+  await bootRuntime();
+  await browser.step(44);
+  expect(element("game").width).toBe(600);
+  expect(element("game").height).toBe(600);
+  element("board").dispatchEvent(
+    new PointerEvent("pointermove", {
+      clientX: 330,
+      clientY: 158,
+      pointerId: 1,
+      isPrimary: true,
+      pointerType: "touch",
+    }),
+  );
+  const state = step.mock.instances.at(-1);
+  expect(state.hovered.has(state.project.tree.attrs.staringCard)).toBe(true);
+});
+
 test("启动页后台停帧，恢复保留 Logo 与淡入进度", async () => {
   await bootRuntime();
   await browser.step(2);
@@ -1104,6 +1133,7 @@ test("下一场景预测只请求纹理，不提前改变卡片位置、目标�
   expect(prefetch).toHaveBeenCalledTimes(2);
 });
 
+const MiB = 1024 * 1024;
 function atlasStore(options = {}) {
   return new AtlasStore(
     {
@@ -1257,8 +1287,109 @@ test("片尾动画和名单使用冻结时钟，结局画布的像素密度也�
   expect(element("credits").hidden).toBe(true);
 });
 
+test("默认图集预算为 128 MiB，小图不再受 16 张缓存上限限制", async () => {
+  const textures = Array.from({ length: 20 }, (_, key) => ({
+    key: String(key),
+    url: atlasUrl(key),
+    width: 512,
+    height: 512,
+  }));
+  const store = new AtlasStore(
+    { textures },
+    { entries: [] },
+    { baseUrl: document.baseURI },
+  );
+  await Promise.all(
+    textures.map(({ url }) => store.image({ textureUrl: url })),
+  );
+  expect(store.cacheBudget).toBe(128 * MiB);
+  expect(store.images.size).toBe(20);
+  expect(store.cachedBytes).toBe(20 * MiB);
+});
+
+test("大小图按解码字节计算，超预算时淘汰非活动 LRU", async () => {
+  const store = atlasStore({ cacheBudget: 65 * MiB });
+  await store.image({ textureUrl: atlasUrl("a") });
+  await store.image({ textureUrl: atlasUrl("b") });
+  expect(store.cachedBytes).toBe(2 * MiB);
+  store.retainActive([atlasUrl("b")]);
+  await store.image({ textureUrl: atlasUrl("huge") });
+  expect([...store.images.keys()]).toEqual([atlasUrl("b"), atlasUrl("huge")]);
+  expect(store.cachedBytes).toBe(65 * MiB);
+  expect(store.lastUsed.has(atlasUrl("a"))).toBe(false);
+});
+
+test("活动集合可以超过软预算，离开大图后释放内存且超限时不预取", async () => {
+  const store = atlasStore({ cacheBudget: 2 * MiB });
+  store.retainActive([atlasUrl("a"), atlasUrl("huge")]);
+  await store.image({ textureUrl: atlasUrl("a") });
+  await store.image({ textureUrl: atlasUrl("huge") });
+  expect(store.cachedBytes).toBe(65 * MiB);
+  await store.prefetch([atlasUrl("b")]);
+  expect(store.images.has(atlasUrl("b"))).toBe(false);
+  expect(store.images.has(atlasUrl("huge"))).toBe(true);
+  store.retainActive([atlasUrl("a")]);
+  expect(store.cachedBytes).toBe(MiB);
+  expect([...store.images.keys()]).toEqual([atlasUrl("a")]);
+});
+
+test("在途解码计入预算并复用，完成后释放超预算的非活动图集", async () => {
+  const store = atlasStore({ cacheBudget: MiB });
+  await store.image({ textureUrl: atlasUrl("a") });
+  store.retainActive([atlasUrl("a")]);
+  let release;
+  const decode = vi
+    .spyOn(HTMLImageElement.prototype, "decode")
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+  decode.mockClear();
+  const pending = store.image({ textureUrl: atlasUrl("b") });
+  expect(store.image({ textureUrl: atlasUrl("b") })).toBe(pending);
+  expect(store.cachedBytes).toBe(2 * MiB);
+  expect(store.prune()).toBe(false);
+  expect(store.pending.has(atlasUrl("b"))).toBe(true);
+  await store.prefetch([atlasUrl("c")]);
+  expect(decode).toHaveBeenCalledTimes(1);
+  expect(store.images.has(atlasUrl("c"))).toBe(false);
+  release();
+  await pending;
+  expect(store.pending.size).toBe(0);
+  expect(store.cachedBytes).toBe(MiB);
+  expect([...store.images.keys()]).toEqual([atlasUrl("a")]);
+});
+
+test("预取大图会腾出全部所需字节，而不只淘汰一张小图", async () => {
+  const store = atlasStore({ cacheBudget: 64 * MiB, prefetchBudget: 64 * MiB });
+  for (const key of ["a", "b", "c"])
+    await store.image({ textureUrl: atlasUrl(key) });
+  expect(store.cachedBytes).toBe(3 * MiB);
+  await store.prefetch([atlasUrl("huge")]);
+  expect([...store.images.keys()]).toEqual([atlasUrl("huge")]);
+  expect(store.cachedBytes).toBe(64 * MiB);
+  expect(store.prefetched.size).toBe(1);
+  expect(store.lastUsed.size).toBe(1);
+});
+
+test("无法容纳的预取不会清空缓存，仍能继续预取较小图集", async () => {
+  const store = atlasStore({ cacheBudget: 2 * MiB, prefetchBudget: 64 * MiB });
+  await store.image({ textureUrl: atlasUrl("a") });
+  await store.image({ textureUrl: atlasUrl("b") });
+  const decode = vi.spyOn(HTMLImageElement.prototype, "decode").mockClear();
+  await store.prefetch([atlasUrl("huge")]);
+  expect([...store.images.keys()]).toEqual([atlasUrl("a"), atlasUrl("b")]);
+  expect(decode).not.toHaveBeenCalled();
+  await store.prefetch([atlasUrl("huge"), atlasUrl("c")]);
+  expect([...store.images.keys()]).toEqual([atlasUrl("b"), atlasUrl("c")]);
+  expect(store.cachedBytes).toBe(2 * MiB);
+  expect(decode).toHaveBeenCalledTimes(1);
+});
+
 test("预取最多两张图集，已有与在途资源复用，不抢占活动缓存", async () => {
-  const store = atlasStore({ maxCachedTextures: 3 });
+  const store = atlasStore({ cacheBudget: 3 * MiB });
   await store.image({ textureUrl: atlasUrl("a") });
   store.retainActive([atlasUrl("a")]);
   const releases = [];
@@ -1278,12 +1409,13 @@ test("预取最多两张图集，已有与在途资源复用，不抢占活动�
   await pending;
   await reused;
   expect(store.images.size).toBe(3);
+  expect(store.cachedBytes).toBe(3 * MiB);
 });
 
 test("预取解码预算限制大图，缓存满时只淘汰非活动 LRU", async () => {
   const store = atlasStore({
-    maxCachedTextures: 2,
-    prefetchBudget: 1024 * 1024,
+    cacheBudget: 2 * MiB,
+    prefetchBudget: MiB,
   });
   await store.image({ textureUrl: atlasUrl("a") });
   await store.image({ textureUrl: atlasUrl("b") });
@@ -1305,14 +1437,20 @@ test("改变目标清理未使用的预取，失败图集允许正式绘制重�
     .spyOn(HTMLImageElement.prototype, "decode")
     .mockResolvedValue();
   await store.prefetch([atlasUrl("a"), atlasUrl("b")]);
+  expect(store.cachedBytes).toBe(2 * MiB);
   await store.prefetch([atlasUrl("c")]);
   expect(store.images.has(atlasUrl("a"))).toBe(false);
   expect(store.images.has(atlasUrl("b"))).toBe(false);
+  expect(store.cachedBytes).toBe(MiB);
   decode.mockRejectedValueOnce(new Error("offline"));
   await store.prefetch([atlasUrl("d")]);
   expect(store.images.has(atlasUrl("d"))).toBe(false);
+  expect(store.cachedBytes).toBe(0);
+  expect(store.pending.size).toBe(0);
+  expect(store.prefetched.size).toBe(0);
   await store.image({ textureUrl: atlasUrl("d") });
   expect(store.images.has(atlasUrl("d"))).toBe(true);
+  expect(store.cachedBytes).toBe(MiB);
 });
 
 test.each([0.75, 1.5, 2])(

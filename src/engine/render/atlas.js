@@ -13,7 +13,7 @@ export class AtlasStore {
     atlases,
     {
       baseUrl = globalThis.document?.baseURI,
-      maxCachedTextures = 16,
+      cacheBudget = 128 * 1024 * 1024,
       maxPrefetchTextures = 2,
       prefetchBudget = 32 * 1024 * 1024,
     } = {},
@@ -26,7 +26,7 @@ export class AtlasStore {
     this.active = new Set();
     this.lastUsed = new Map();
     this.cacheTick = 0;
-    this.maxCachedTextures = maxCachedTextures;
+    this.cacheBudget = cacheBudget;
     this.maxPrefetchTextures = maxPrefetchTextures;
     this.prefetchBudget = prefetchBudget;
     this.prefetched = new Map();
@@ -44,31 +44,57 @@ export class AtlasStore {
     if (found.length > 1) throw new Error(`素材引用多义: ${filename}`);
     return undefined;
   }
+  textureBytes(url) {
+    const { width, height } = this.texturesByUrl.get(url);
+    return width * height * 4;
+  }
+  // 按 RGBA 像素估算，也为正在解码的图集计入预算。
+  get cachedBytes() {
+    let bytes = 0;
+    for (const url of this.images.keys()) bytes += this.textureBytes(url);
+    return bytes;
+  }
+  remove(url) {
+    this.images.delete(url);
+    this.lastUsed.delete(url);
+    this.prefetched.delete(url);
+  }
   retainActive(urls) {
     this.active = new Set(urls);
     for (const url of this.active) this.prefetched.delete(url);
     this.prune();
   }
-  prune() {
+  prune(reserve = 0) {
+    let bytes = this.cachedBytes + reserve;
+    if (bytes <= this.cacheBudget) return true;
     const removable = [...this.images.keys()]
-      .filter((url) => !this.active.has(url) && !this.pending.has(url))
-      .sort(
-        (a, b) => (this.lastUsed.get(a) || 0) - (this.lastUsed.get(b) || 0),
-      );
+      .filter(
+        (url) =>
+          !this.active.has(url) &&
+          !this.pending.has(url) &&
+          (!reserve || !this.prefetched.has(url)),
+      )
+      .sort((a, b) => this.lastUsed.get(a) - this.lastUsed.get(b));
+    // 预取先确认能腾出足够空间，不为放不下的图集清空现有缓存。
+    if (
+      reserve &&
+      bytes - removable.reduce((sum, url) => sum + this.textureBytes(url), 0) >
+      this.cacheBudget
+    )
+      return false;
     for (const url of removable) {
-      if (this.images.size <= this.maxCachedTextures) break;
-      this.images.delete(url);
-      this.lastUsed.delete(url);
-      this.prefetched.delete(url);
+      if (bytes <= this.cacheBudget) break;
+      bytes -= this.textureBytes(url);
+      this.remove(url);
     }
+    // 正在显示和解码的图集允许暂时超过软预算。
+    return bytes <= this.cacheBudget;
   }
   prefetch(urls) {
     const wanted = new Set(urls);
     for (const url of this.prefetched.keys()) {
       if (wanted.has(url) || this.pending.has(url)) continue;
-      this.prefetched.delete(url);
-      this.images.delete(url);
-      this.lastUsed.delete(url);
+      this.remove(url);
     }
     let bytes = [...this.prefetched.values()].reduce(
       (sum, size) => sum + size,
@@ -80,21 +106,8 @@ export class AtlasStore {
       if (this.prefetched.size >= this.maxPrefetchTextures) break;
       const texture = this.texturesByUrl.get(url);
       if (!texture) continue;
-      const size = texture.width * texture.height * 4;
-      if (bytes + size > this.prefetchBudget) continue;
-      if (this.images.size >= this.maxCachedTextures) {
-        const oldest = [...this.images.keys()]
-          .filter(
-            (cached) =>
-              !this.active.has(cached) &&
-              !this.pending.has(cached) &&
-              !this.prefetched.has(cached),
-          )
-          .sort((a, b) => this.lastUsed.get(a) - this.lastUsed.get(b))[0];
-        if (!oldest || this.images.size > this.maxCachedTextures) break;
-        this.images.delete(oldest);
-        this.lastUsed.delete(oldest);
-      }
+      const size = this.textureBytes(url);
+      if (bytes + size > this.prefetchBudget || !this.prune(size)) continue;
       bytes += size;
       this.prefetched.set(url, size);
       requests.push(this.image({ textureUrl: url }));
@@ -121,11 +134,8 @@ export class AtlasStore {
         },
         () => {
           this.pending.delete(region.textureUrl);
-          if (this.images.get(region.textureUrl) === pending) {
-            this.images.delete(region.textureUrl);
-            this.lastUsed.delete(region.textureUrl);
-            this.prefetched.delete(region.textureUrl);
-          }
+          if (this.images.get(region.textureUrl) === pending)
+            this.remove(region.textureUrl);
         },
       );
     }

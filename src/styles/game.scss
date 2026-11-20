@@ -56,8 +56,8 @@ body {
   background: white;
   img {
     display: block;
-    width: min(100vw, calc(100svh * 16 / 9));
-    max-height: 100svh;
+    width: min(var(--safe-width), calc(var(--safe-height) * 16 / 9));
+    max-height: var(--safe-height);
     aspect-ratio: 16 / 9;
     object-fit: contain;
     pointer-events: none;
@@ -584,6 +584,55 @@ button:disabled {
   }
   .menu-page button.paper-button {
     padding: 0.25em;
+  }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 600px) {
+  #game-menu {
+    padding: max(12px, env(safe-area-inset-top))
+      max(56px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+    font-size: 16px;
+  }
+  .menu-pages {
+    gap: 12px;
+  }
+  #menu-controls {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 12px;
+  }
+  .settings-audio,
+  .settings-display {
+    gap: 6px;
+  }
+  .settings-display {
+    justify-items: end;
+  }
+  #chapter-panel h2 {
+    margin-bottom: 8px;
+    font-size: 24px;
+  }
+  #chapter-list {
+    width: 100%;
+    height: clamp(120px, 40svh, 180px);
+    min-height: 0;
+    margin: 0;
+    padding: 12px;
+    gap: 8px;
+    button {
+      flex-basis: clamp(72px, 24svh, 110px);
+    }
+  }
+  #language-list {
+    max-height: calc(var(--safe-height) - 100px);
+  }
+  @media (min-width: 600px) {
+    #game-menu[data-page="settings"] > .menu-pages > .menu-pages {
+      grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+      column-gap: 24px;
+      align-items: center;
+    }
   }
 }
 #ending {
