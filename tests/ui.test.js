@@ -621,8 +621,43 @@ async function firstHotspot() {
 
 const startupStage = (key) =>
   model.ui.startupProgress.find((stage) => stage.key === key);
-const startupRow = (key) =>
-  element("startup-progress").querySelector(`[data-stage="${key}"]`);
+const startupMeter = () =>
+  element("startup-progress").querySelector('[role="progressbar"]');
+const startupPercent = () =>
+  Number(startupMeter().getAttribute("aria-valuenow"));
+
+test("单条进度按阶段完成比例聚合，首帧就绪前最高为 99%", async () => {
+  mountUi();
+  model.ui.startupActive = true;
+  for (const [logos, data, scene, total, expected] of [
+    [0, 0, 0, null, 0],
+    [3, 1, 0, null, 44],
+    [3, 3, 0, 4, 66],
+    [3, 3, 1, 4, 75],
+    [3, 3, 4, 4, 99],
+    [3, 3, 0, 0, 99],
+  ]) {
+    model.ui.startupProgress = [
+      { key: "loadingLogos", completed: logos, total: 3, failed: 0 },
+      { key: "loadingData", completed: data, total: 3, failed: 0 },
+      { key: "loadingScene", completed: scene, total, failed: 0 },
+    ];
+    await nextTick();
+    expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(1);
+    expect(startupPercent()).toBe(expected);
+    expect(
+      element("startup-progress").querySelector(".startup-progress-fill").style
+        .width,
+    ).toBe(`${expected}%`);
+  }
+  model.ui.loading = false;
+  await nextTick();
+  expect(startupPercent()).toBe(100);
+  expect(element("startup-progress").hidden).toBe(false);
+  model.ui.startupActive = false;
+  await nextTick();
+  expect(element("startup-progress").hidden).toBe(true);
+});
 
 test("启动进度按实际数据任务完成数更新，不随等待时间虚增", async () => {
   const fetch = globalThis.fetch;
@@ -638,15 +673,16 @@ test("启动进度按实际数据任务完成数更新，不随等待时间虚�
   await vi.waitFor(() => expect(startupStage("loadingData").completed).toBe(2));
   await nextTick();
   expect(element("startup-progress").hidden).toBe(false);
-  expect(startupRow("loadingData").textContent).toContain("2/3");
-  expect(startupRow("loadingData").querySelector("progress").value).toBe(2);
-  expect(
-    startupRow("loadingScene").querySelector("progress").hasAttribute("value"),
-  ).toBe(false);
+  expect(element("startup-progress").textContent).toContain(
+    model.t("loadingData"),
+  );
+  expect(startupPercent()).toBe(55);
+  expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(1);
   browser.time += 60;
   await browser.step(1, 0);
   expect(startupStage("loadingData").completed).toBe(2);
   expect(startupStage("loadingScene").total).toBeNull();
+  expect(startupPercent()).toBe(55);
   release();
   await pending;
   expect(startupStage("loadingData").completed).toBe(3);
@@ -657,9 +693,11 @@ test("启动进度按实际数据任务完成数更新，不随等待时间虚�
   expect(scene.failed).toBe(0);
   await nextTick();
   expect(model.ui.startupActive).toBe(true);
-  expect(element("startup-progress").hidden).toBe(true);
+  expect(startupPercent()).toBe(100);
+  expect(element("startup-progress").hidden).toBe(false);
   await browser.step(10);
   expect(element("startup").hidden).toBe(true);
+  expect(element("startup-progress").hidden).toBe(true);
 });
 
 test("启动图片逐张解码更新进度，失败不计作成功，也不提前开始 Logo", async () => {
@@ -675,7 +713,7 @@ test("启动图片逐张解码更新进度，失败不计作成功，也不提�
   });
   decodes[1].resolve();
   await flushPromises();
-  expect(startupRow("loadingLogos").textContent).toContain("1/3");
+  expect(startupPercent()).toBe(44);
   browser.time += 30;
   await browser.step(1, 0);
   expect(element("startup").childElementCount).toBe(0);
@@ -686,8 +724,8 @@ test("启动图片逐张解码更新进度，失败不计作成功，也不提�
     completed: 1,
     failed: 1,
   });
-  expect(startupRow("loadingLogos").textContent).toContain("失败 1");
-  expect(startupRow("loadingLogos").querySelector("progress").value).toBe(1);
+  expect(element("startup-progress").textContent).toContain("失败 1");
+  expect(startupPercent()).toBe(55);
   decodes[2].resolve();
   await flushPromises();
   expect(startupStage("loadingLogos")).toMatchObject({
@@ -699,7 +737,7 @@ test("启动图片逐张解码更新进度，失败不计作成功，也不提�
   expect(element("startup").firstElementChild.style.opacity).toBe("0.5");
 });
 
-test("首帧图集等待时进度可更新，后台解码完成后仍等实际绘制才隐藏", async () => {
+test("首帧图集等待时进度可更新，实际绘制后显示 100% 再随启动页隐藏", async () => {
   await bootRuntime();
   const decodes = new Map();
   vi.spyOn(HTMLImageElement.prototype, "decode").mockImplementation(
@@ -714,7 +752,8 @@ test("首帧图集等待时进度可更新，后台解码完成后仍等实际�
   const total = startupStage("loadingScene").total;
   expect(total).toBeGreaterThan(0);
   expect(startupStage("loadingScene").completed).toBe(0);
-  expect(startupRow("loadingScene").querySelector("progress").max).toBe(total);
+  expect(startupPercent()).toBe(66);
+  expect(startupMeter().getAttribute("aria-valuemax")).toBe("100");
   expect(element("startup-progress").hidden).toBe(false);
   expect(browser.pendingFrame).toBe(false);
   browser.setHidden(true);
@@ -723,6 +762,7 @@ test("首帧图集等待时进度可更新，后台解码完成后仍等实际�
   await nextTick();
   expect(startupStage("loadingScene").completed).toBe(total);
   expect(model.ui.loading).toBe(true);
+  expect(startupPercent()).toBe(99);
   expect(element("startup-progress").hidden).toBe(false);
   browser.time += 30;
   browser.setHidden(false);
@@ -730,6 +770,11 @@ test("首帧图集等待时进度可更新，后台解码完成后仍等实际�
   await nextTick();
   expect(startupStage("loadingScene").completed).toBe(total);
   expect(model.ui.loading).toBe(false);
+  expect(startupPercent()).toBe(100);
+  expect(element("startup-progress").hidden).toBe(false);
+  // 保留末张 Logo 的淡入与停留，以及 Logo、背景各 1 秒的淡出。
+  await browser.step(4, 1);
+  await nextTick();
   expect(element("startup-progress").hidden).toBe(true);
 });
 
@@ -843,7 +888,7 @@ test("图集进度按唯一 URL 计数，缓存复用和失败不改变原渲染
   expect(missing.missing).toHaveLength(2);
 });
 
-test("加载进度覆盖全部语言和 RTL，未知总数不显示虚构百分比", async () => {
+test("单条加载进度支持全部语言和 RTL，未知阶段保留零进度", async () => {
   mountUi();
   model.ui.startupActive = true;
   model.ui.startupProgress = [
@@ -862,10 +907,11 @@ test("加载进度覆盖全部语言和 RTL，未知总数不显示虚构百分�
   model.settings.language = "ar";
   await nextTick();
   expect(element("startup-progress").dir).toBe("rtl");
-  expect(startupRow("loadingScene").textContent).toContain("—");
-  expect(
-    startupRow("loadingScene").querySelector("progress").hasAttribute("value"),
-  ).toBe(false);
+  expect(startupPercent()).toBe(0);
+  expect(element("startup-progress").textContent).toContain(
+    model.t("loadingScene"),
+  );
+  expect(wrapper.findAll('[role="progressbar"]')).toHaveLength(1);
 });
 
 test("启动页 Anime.js 时间线保持原版 Logo 顺序、线性淡入淡出和末页等待", async () => {

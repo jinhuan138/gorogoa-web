@@ -67,33 +67,38 @@ body {
   position: fixed;
   z-index: 11;
   right: max(16px, var(--inset-right));
-  bottom: max(12px, var(--inset-bottom));
+  bottom: max(8px, var(--inset-bottom));
   left: max(16px, var(--inset-left));
-  width: min(320px, calc(var(--safe-width) - 32px));
+  width: min(360px, calc(var(--safe-width) - 32px));
   margin-inline: auto;
-  padding: 12px;
-  border-radius: 4px;
-  background: rgb(255 255 255 / 92%);
   color: #535044;
   pointer-events: none;
   font:
-    12px/1.5 system-ui,
+    11px/1.5 system-ui,
     sans-serif;
-  .startup-progress-stage + .startup-progress-stage {
-    margin-top: 8px;
-  }
   .startup-progress-label {
     display: flex;
     justify-content: space-between;
     gap: 12px;
     font-variant-numeric: tabular-nums;
   }
-  progress {
-    display: block;
-    width: 100%;
-    height: 6px;
+  .startup-progress-track {
+    height: 4px;
     margin-top: 4px;
-    accent-color: #80744f;
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgb(128 116 79 / 20%);
+  }
+  .startup-progress-fill {
+    height: 100%;
+    margin-inline-end: auto;
+    background: #80744f;
+    transition: width 0.4s ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .startup-progress-fill {
+      transition: none;
+    }
   }
 }
 .sr-only {
@@ -244,8 +249,8 @@ button {
 }
 #notice {
   position: fixed;
-  inset: auto calc(12px + var(--inset-right))
-    calc(8px + var(--inset-bottom)) calc(12px + var(--inset-left));
+  inset: auto calc(12px + var(--inset-right)) calc(8px + var(--inset-bottom))
+    calc(12px + var(--inset-left));
   margin: 0 auto;
   width: fit-content;
   padding: 8px 12px;

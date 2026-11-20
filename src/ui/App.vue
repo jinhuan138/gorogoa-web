@@ -1,11 +1,37 @@
 <script setup>
-import { provide } from "vue";
+import { computed, provide } from "vue";
 import GameMenu from "./GameMenu.vue";
 import Hotspots from "./Hotspots.vue";
 import { cssImage } from "../resources/textures.js";
 
 const props = defineProps({ model: { type: Object, required: true } });
 const { ui, settings, actions, t } = props.model;
+const startupPercent = computed(() => {
+  if (!ui.startupProgress.length) return 0;
+  if (!ui.loading) return 100;
+  // 按阶段等权合并已处理比例；首帧就绪前不显示 100%。
+  const completed = ui.startupProgress.reduce((sum, stage) => {
+    if (stage.total === null) return sum;
+    return (
+      sum +
+      (stage.total === 0 ? 1 : (stage.completed + stage.failed) / stage.total)
+    );
+  }, 0);
+  return Math.min(
+    99,
+    Math.floor((completed / ui.startupProgress.length) * 100),
+  );
+});
+const startupLabel = computed(
+  () =>
+    ui.startupProgress.find(
+      (stage) =>
+        stage.total === null || stage.completed + stage.failed < stage.total,
+    )?.key ?? "loading",
+);
+const startupFailed = computed(() =>
+  ui.startupProgress.reduce((sum, stage) => sum + stage.failed, 0),
+);
 provide("gameUi", props.model);
 </script>
 
@@ -14,34 +40,30 @@ provide("gameUi", props.model);
   <section
     id="startup-progress"
     role="status"
-    :hidden="
-      !ui.startupActive ||
-      !ui.loading ||
-      ui.loadFailed ||
-      !ui.startupProgress.length
-    "
+    :hidden="!ui.startupActive || ui.loadFailed || !ui.startupProgress.length"
     :dir="settings.language === 'ar' ? 'rtl' : 'ltr'"
   >
+    <div class="startup-progress-label">
+      <span>{{ t(startupLabel) }}</span>
+      <span>
+        {{ startupPercent }}%
+        <span v-if="startupFailed">
+          · {{ t("loadingFailed") }} {{ startupFailed }}</span
+        >
+      </span>
+    </div>
     <div
-      v-for="stage in ui.startupProgress"
-      :key="stage.key"
-      class="startup-progress-stage"
-      :data-stage="stage.key"
+      class="startup-progress-track"
+      role="progressbar"
+      :aria-label="t('loading')"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      :aria-valuenow="startupPercent"
     >
-      <div class="startup-progress-label">
-        <span>{{ t(stage.key) }}</span>
-        <span>
-          {{ stage.total === null ? "—" : `${stage.completed}/${stage.total}` }}
-          <span v-if="stage.failed">
-            · {{ t("loadingFailed") }} {{ stage.failed }}</span
-          >
-        </span>
-      </div>
-      <progress
-        :aria-label="t(stage.key)"
-        :max="stage.total || 1"
-        :value="stage.total === null ? undefined : stage.completed"
-      ></progress>
+      <div
+        class="startup-progress-fill"
+        :style="{ width: `${startupPercent}%` }"
+      ></div>
     </div>
   </section>
   <main id="game-shell" :inert="ui.startupActive">
