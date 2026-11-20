@@ -1,5 +1,6 @@
 import { AudioBank } from "../engine/audio/audio.js";
 import { SoundtrackDirector } from "../engine/audio/soundtrack.js";
+import { InterfaceSounds } from "../engine/audio/interface.js";
 import {
   planTransition,
   sampleTransition,
@@ -37,6 +38,7 @@ import {
   createTextureUrls,
   cssImage,
 } from "../resources/textures.js";
+import { markStartup, reportStartup } from "../resources/startup-timing.js";
 
 export async function startGame({
   ui,
@@ -46,6 +48,7 @@ export async function startGame({
   actions,
   t,
 }) {
+  markStartup("game-start");
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d");
   const boardFrame = document.createElement("canvas");
@@ -55,6 +58,22 @@ export async function startGame({
   const endingCanvas = document.getElementById("ending");
   const pauseButton = document.getElementById("pause");
   const soundBank = new AudioBank({ baseUrl: document.baseURI });
+  const interfaceBank = new AudioBank({ baseUrl: document.baseURI });
+  const interfaceSounds = new InterfaceSounds(interfaceBank);
+  actions.playUiSound = async (name) => {
+    if (settings.soundMuted || interfaceSounds.disposed) return;
+    if (!soundDirector) {
+      if (!(globalThis.AudioContext || globalThis.webkitAudioContext)) return;
+      const snapshot = state;
+      await setSound(true);
+      if (state !== snapshot) return;
+    }
+    return interfaceSounds.play(name);
+  };
+  actions.disposeInterfaceSounds = () =>
+    interfaceSounds
+      .dispose()
+      .catch((error) => console.warn("界面音频关闭失败", error));
   const startupButton = document.getElementById("startup");
   const gameShell = document.getElementById("game-shell");
   const startup = new StartupScreen(startupButton, soundBank, document.baseURI);
@@ -69,8 +88,18 @@ export async function startGame({
   let pausedAt = null;
   soundBank.setChannelVolume("music", settings.volumeMusic);
   soundBank.setChannelVolume("effects", settings.volumeEffects);
-  actions.setVolume = (channel, volume) =>
+  for (const [channel, value] of [
+    ["music", settings.volumeMusic],
+    ["effects", settings.volumeEffects],
+  ]) {
+    interfaceBank.setChannelVolume(channel, value);
+    interfaceSounds.initializeSlider(channel, value);
+  }
+  actions.setVolume = (channel, volume) => {
     soundBank.setChannelVolume(channel, volume);
+    interfaceBank.setChannelVolume(channel, volume);
+    interfaceSounds.adjustVolume(channel, volume, performance.now() / 1000);
+  };
   let project,
     state,
     links,
@@ -82,6 +111,7 @@ export async function startGame({
     dirty = true,
     drag = null,
     press = null,
+    tap = null,
     opening = null,
     closing = null,
     flight = null,
@@ -296,6 +326,9 @@ export async function startGame({
   board.addEventListener("pointerdown", (event) => {
     if (!state || inputBusy() || !event.isPrimary || event.button !== 0) return;
     setHover(event);
+    tap = event.target.closest(".hotspot")
+      ? null
+      : { id: event.pointerId, clientX: event.clientX, clientY: event.clientY };
     if (state.storyPhase !== "CHAPTERS") return;
     const point = logicalPoint(event),
       card = hitCard(point);
@@ -333,7 +366,7 @@ export async function startGame({
       }
       board.setPointerCapture(event.pointerId);
       soundDirector?.playInterface("int_lift_card");
-      press = null;
+      press = tap = null;
     }
     if (drag && event.pointerId === drag.id) {
       drag.topLeft = logicalPoint(event).map((v, i) => v - drag.offset[i]);
@@ -344,15 +377,51 @@ export async function startGame({
   board.addEventListener("pointerleave", (event) => {
     // 触摸抬起也会触发离开；保留最后触及的卡片，让下一帧处理原版入场条件。
     if (state && !drag && event.pointerType !== "touch") {
-      press = null;
+      press = tap = null;
       state.hovered.clear();
       dirty = true;
       updateBoardCursor();
     }
   });
+  function hintAt(point) {
+    if (!settings.showHints || inputBusy()) return;
+    const card = hitCard(point);
+    const snapshot = state;
+    const shouldPlay = () =>
+      state === snapshot && pausedAt === null && settings.showHints;
+    if (card && !canMove(card.guid)) {
+      interfaceSounds.play("nonInteractive", { shouldPlay });
+      return;
+    }
+    const candidates = card ? [card] : cards();
+    if (
+      candidates.some(
+        (candidate) =>
+          canMove(candidate.guid) &&
+          activeTransitions(candidate).some(
+            (transition) => transition.attrs.hotspotStyle === "REGION",
+          ),
+      )
+    )
+      interfaceSounds.play("ping", { shouldPlay });
+    // 原版 m_sfxPingEmpty 未绑定素材，没有 REGION 热点时保持无声。
+  }
   board.addEventListener("pointerup", (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    const tapped = event.pointerId === tap?.id ? tap : null;
+    if (tapped) tap = null;
     if (event.pointerId === press?.id) press = null;
-    if (event.pointerId !== drag?.id) return;
+    if (event.pointerId !== drag?.id) {
+      if (
+        tapped &&
+        Math.hypot(
+          event.clientX - tapped.clientX,
+          event.clientY - tapped.clientY,
+        ) <= 7
+      )
+        hintAt(logicalPoint(event));
+      return;
+    }
     const current = drag;
     drag = null;
     const topLeft = logicalPoint(event).map((v, i) => v - current.offset[i]);
@@ -368,6 +437,7 @@ export async function startGame({
     dirty = true;
   });
   function abandonPointer(event) {
+    if (event.pointerId === tap?.id) tap = null;
     if (event.pointerId === press?.id) press = null;
     if (event.pointerId !== drag?.id) return;
     cancelCardDrag(links, drag);
@@ -382,11 +452,12 @@ export async function startGame({
   function restart({ restoreSaved = false, checkpoint = null } = {}) {
     if (!project) return;
     soundDirector?.stop();
+    interfaceSounds.stop();
     epoch = performance.now();
     graphicTimes.clear();
     layerStatus.clear();
     blockedCards.clear();
-    viewChange = drag = press = opening = closing = flight = null;
+    viewChange = drag = press = tap = opening = closing = flight = null;
     scripts = new ProjectScripts(project);
     state = new RuntimeState(project, {
       scriptEvaluator: (definition, predicate) =>
@@ -439,7 +510,7 @@ export async function startGame({
   function textureUrl(name) {
     return textureUrls.get(name);
   }
-  function showMenu(open) {
+  function showMenu(open, feedback = true) {
     if (startup.active || !state || open === (pausedAt !== null)) return;
     if (open) {
       if (drag) {
@@ -447,14 +518,15 @@ export async function startGame({
         drag = null;
         dirty = true;
       }
-      press = null;
+      press = tap = null;
       pausedAt = performance.now();
-      actions.showSettings();
+      actions.resetMenu();
     } else {
       epoch += performance.now() - pausedAt;
       pausedAt = null;
     }
     ui.paused = open;
+    if (feedback) actions.playUiSound("menu");
     updateAudioPause().catch((error) =>
       console.warn("声音暂停状态更新失败", error),
     );
@@ -502,8 +574,10 @@ export async function startGame({
       const checkpoint = chapter
         ? await loadChapterCheckpoint(chapter === 6 ? "end" : chapter)
         : null;
-      showMenu(false);
+      const menuWasOpen = pausedAt !== null;
+      showMenu(false, false);
       restart({ checkpoint });
+      if (menuWasOpen) actions.playUiSound("menu");
     } catch (error) {
       console.warn("章节载入失败", error);
       showMenu(false);
@@ -887,6 +961,7 @@ export async function startGame({
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(boardFrame, 0, 0);
         updateBoardCursor();
+        if (ui.loading) reportStartup();
         ui.loading = false;
       }
       canvas.dataset.locations = cards()
@@ -918,8 +993,12 @@ export async function startGame({
     if (
       !settings.soundMuted &&
       (globalThis.AudioContext || globalThis.webkitAudioContext)
-    )
+    ) {
+      interfaceBank
+        .resume()
+        .catch((error) => console.warn("界面声音暂未解锁", error));
       startup.enableMusic();
+    }
   });
   board.addEventListener("pointerdown", () => {
     if (
@@ -936,6 +1015,7 @@ export async function startGame({
       read("assets/manifest.json"),
       read("assets/data/atlases.json"),
     ]);
+    markStartup("data-loaded");
     project = loaded;
     manifest = loadedManifest;
     textureUrls = createTextureUrls(manifest, document.baseURI);
@@ -948,6 +1028,7 @@ export async function startGame({
       scriptDurationMillis: (graphic) => scripts.durationMillis(graphic),
     });
     restart({ restoreSaved: true });
+    markStartup("state-restored");
     document.body.style.setProperty(
       "--paper",
       cssImage(textureUrl("PaperTex1_tile")),
@@ -1017,25 +1098,30 @@ export async function startGame({
   }
 
   async function setSound(enabled, remember = false) {
-    if (!bootReady || ui.soundBusy) return;
+    if (!bootReady || ui.soundBusy || interfaceSounds.disposed) return;
     ui.soundBusy = true;
     const previousMuted = settings.soundMuted;
     try {
       if (enabled) {
-        // Chrome requires the context to be resumed during the click, before any fetch.
+        // 两个上下文都在用户手势内发起解锁，必须早于任何网络请求。
+        await Promise.all([soundBank.resume(), interfaceBank.resume()]);
+        if (interfaceSounds.disposed) return;
         if (!soundDirector) {
-          await soundBank.resume();
           const { events } = await read("assets/audio/events.json");
+          if (interfaceSounds.disposed) return;
           soundDirector = new SoundtrackDirector(project, events, soundBank);
         }
       }
       settings.soundMuted = !enabled;
+      interfaceSounds.setEnabled(enabled);
       await updateAudioPause();
+      if (interfaceSounds.disposed) return;
       if (remember) preferences.rememberSound();
       ui.soundLabel =
         soundDirector && !settings.soundMuted ? "soundOff" : "soundOn";
     } catch (error) {
       settings.soundMuted = previousMuted;
+      interfaceSounds.setEnabled(!previousMuted && Boolean(soundDirector));
       ui.soundLabel = "retrySound";
       console.warn("声音暂未就绪", error);
     } finally {

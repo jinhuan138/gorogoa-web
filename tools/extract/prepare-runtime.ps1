@@ -7,15 +7,18 @@ $resources = Get-Content -LiteralPath (Join-Path $projectRoot 'work\resource-map
 $projectAsset = @($export.texts | Where-Object { $_.name -eq 'Gorogoa.project' })
 if ($projectAsset.Count -ne 1) { throw '正式版项目配置不唯一' }
 New-Item -ItemType Directory -Path $dataRoot -Force | Out-Null
+# 编辑器元数据：修改记录、删除记录及时间戳，运行时不读取。
+$strippedElements = @('fieldModificationLog', 'deletionLog')
+$strippedAttributes = @('lastModified', 'lastModifiedByUser')
 
 function Convert-Element([System.Xml.XmlElement]$element) {
     $attrs = [ordered]@{}
     foreach ($attribute in $element.Attributes) {
-        if ($attribute.Name -notin @('lastModified', 'lastModifiedByUser')) { $attrs[$attribute.Name] = [string]$attribute.Value }
+        if ($attribute.Name -notin $strippedAttributes) { $attrs[$attribute.Name] = [string]$attribute.Value }
     }
     $children = [System.Collections.Generic.List[object]]::new()
     foreach ($child in $element.ChildNodes) {
-        if ($child.NodeType -eq [System.Xml.XmlNodeType]::Element -and $child.get_LocalName() -ne 'fieldModificationLog') {
+        if ($child.NodeType -eq [System.Xml.XmlNodeType]::Element -and $child.get_LocalName() -notin $strippedElements) {
             $children.Add((Convert-Element $child))
         } elseif ($child.NodeType -in @([System.Xml.XmlNodeType]::Text, [System.Xml.XmlNodeType]::CDATA, [System.Xml.XmlNodeType]::SignificantWhitespace)) {
             $children.Add([ordered]@{ type = '#text'; attrs = [ordered]@{}; children = @(); text = [string]$child.Value })
@@ -30,14 +33,14 @@ function Compare-Element([System.Xml.XmlElement]$element, $actual, [string]$loca
     $expectedType = $element.get_LocalName()
     if ($actual['type'] -cne $expectedType) { throw "节点类型不符：$location ($expectedType != $($actual['type']))" }
     $script:verifiedElements++
-    $expectedAttrs = @($element.Attributes | Where-Object { $_.get_Name() -notin @('lastModified','lastModifiedByUser') })
+    $expectedAttrs = @($element.Attributes | Where-Object { $_.get_Name() -notin $strippedAttributes })
     if ($actual['attrs'].Count -ne $expectedAttrs.Count) { throw "属性数量不符：$location" }
     foreach ($attribute in $expectedAttrs) {
         $key = $attribute.get_Name()
         if (@($actual['attrs'].Keys) -cnotcontains $key -or $actual['attrs'][$key] -cne $attribute.Value) { throw "属性不符：$location/$key" }
         $script:verifiedAttributes++
     }
-    $expectedChildren = @($element.ChildNodes | Where-Object { ($_.NodeType -eq [System.Xml.XmlNodeType]::Element -and $_.get_LocalName() -ne 'fieldModificationLog') -or $_.NodeType -in @([System.Xml.XmlNodeType]::Text,[System.Xml.XmlNodeType]::CDATA,[System.Xml.XmlNodeType]::SignificantWhitespace) })
+    $expectedChildren = @($element.ChildNodes | Where-Object { ($_.NodeType -eq [System.Xml.XmlNodeType]::Element -and $_.get_LocalName() -notin $strippedElements) -or $_.NodeType -in @([System.Xml.XmlNodeType]::Text,[System.Xml.XmlNodeType]::CDATA,[System.Xml.XmlNodeType]::SignificantWhitespace) })
     if ($actual['children'].Count -ne $expectedChildren.Count) { throw "子节点数量不符：$location" }
     for ($i=0; $i -lt $expectedChildren.Count; $i++) {
         $child=$expectedChildren[$i]; $jsonChild=$actual['children'][$i]
@@ -79,7 +82,7 @@ foreach ($chapterId in @('chapter1', 'chapter2', 'chapter3', 'chapter4', 'chapte
     if ($asset.Count -ne 1) { throw "$chapterId 存档资源不唯一" }
     $chapterSaves[$chapterId] = Export-Tree $asset[0] "runtime-$chapterId-save.json" 'GameSaveData'
 }
-$manifest = [ordered]@{ schemaVersion = 1; shape = '{ type, attrs, children, text? }'; stripped = @('fieldModificationLog', 'lastModified', 'lastModifiedByUser'); project = $projectResult; chapter1Save = $chapterSaves['chapter1']; chapterSaves = $chapterSaves; saveKind = 'chapterCheckpoint' }
+$manifest = [ordered]@{ schemaVersion = 1; shape = '{ type, attrs, children, text? }'; stripped = @($strippedElements + $strippedAttributes); project = $projectResult; chapter1Save = $chapterSaves['chapter1']; chapterSaves = $chapterSaves; saveKind = 'chapterCheckpoint' }
 $manifestJson = $manifest | ConvertTo-Json -Depth 8
 if (-not $VerifyOnly) { [System.IO.File]::WriteAllText((Join-Path $dataRoot 'runtime-manifest.json'), $manifestJson, [System.Text.UTF8Encoding]::new($false)) }
 Write-Output ($manifest | ConvertTo-Json -Depth 8 -Compress)

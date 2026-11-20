@@ -20,7 +20,12 @@ async function toggleFullscreen(event) {
   <div id="menu-controls" class="menu-page">
     <div class="settings-audio">
       <label class="settings-check">
-        <input id="show-hints" v-model="settings.showHints" type="checkbox" />
+        <input
+          id="show-hints"
+          v-model="settings.showHints"
+          type="checkbox"
+          @change="actions.toggleHints"
+        />
         <span class="hint-sample" aria-hidden="true"></span>
         <span class="sr-only">{{ t("hints") }}</span>
       </label>

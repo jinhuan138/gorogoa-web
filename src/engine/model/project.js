@@ -1,3 +1,5 @@
+import { markJsonParsed, markStartup } from "../../resources/startup-timing.js";
+
 /** 原版 XML 的无损逻辑树索引；不推断谓词、渲染或状态语义。 */
 export class ProjectModel {
   constructor(tree) {
@@ -99,7 +101,9 @@ async function readRuntimeData(file, baseUrl) {
   const url = new URL(`assets/data/${file}`, baseUrl);
   const response = await fetch(url);
   if (!response.ok) throw new Error(`无法加载 ${file} (${response.status})`);
-  return response.json();
+  const data = await response.json();
+  markJsonParsed(url.href);
+  return data;
 }
 
 export async function loadChapterCheckpoint(
@@ -127,5 +131,8 @@ export async function loadProject(baseUrl = globalThis.document?.baseURI) {
     loadChapterCheckpoint(1, baseUrl),
   ]);
   if (tree?.type !== "project") throw new TypeError("项目类型不符");
-  return { project: new ProjectModel(tree), chapter1Save };
+  markStartup("project-read");
+  const project = new ProjectModel(tree);
+  markStartup("project-indexed");
+  return { project, chapter1Save };
 }

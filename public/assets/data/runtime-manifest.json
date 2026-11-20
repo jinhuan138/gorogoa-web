@@ -3,6 +3,7 @@
   "shape": "{ type, attrs, children, text? }",
   "stripped": [
     "fieldModificationLog",
+    "deletionLog",
     "lastModified",
     "lastModifiedByUser"
   ],
@@ -10,8 +11,8 @@
     "sourceFile": "work/extracted-text/sharedassets0-assets-114-Gorogoa.project.txt",
     "sourceSha256": "d47e2b65c4732467963f4334b86ee6a203ff0fb431b82f0e58e111de85c04c2a",
     "outputFile": "assets/data/runtime-project.json",
-    "outputSha256": "a30038d5c70faddb862267b0da86c87adf9290213d6001d34d817121f1b99fbe",
-    "bytes": 17433295
+    "outputSha256": "82097ef2bf17927c459d5ef9f1e789a9a069c41bb99e7db45ea38ed8b09e4f30",
+    "bytes": 13953998
   },
   "chapter1Save": {
     "sourceFile": "work/extracted-text/resources-assets-971-chapter1.txt",

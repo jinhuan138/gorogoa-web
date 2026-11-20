@@ -71,6 +71,7 @@ assert.equal(project.all("SceneLocation").length, 452);
 assert.equal(project.all("StateTransition").length, 1244);
 assert.equal(project.all("MotionKeyframes").length, 625);
 assert.equal(project.all("fieldModificationLog").length, 0);
+assert.equal(project.all("deletionLog").length, 0);
 let totalNodes = 0;
 for (const nodes of project.nodesByType.values())
   for (const item of nodes) {

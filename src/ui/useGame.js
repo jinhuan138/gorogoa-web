@@ -43,25 +43,34 @@ export function createGameUi() {
       await nextTick();
       document.querySelector(selector).focus();
     };
-    function page(name) {
+    function page(name, sound) {
+      if (sound && ui.page !== name) actions.playUiSound(sound);
       ui.page = name;
       ui.settingsStatus = "";
     }
     const actions = {
-      showSettings() {
+      playUiSound() {},
+      resetMenu() {
         page("settings");
       },
+      showSettings() {
+        if (ui.chapterBusy) return;
+        page("settings", "back");
+      },
+      toggleHints() {
+        actions.playUiSound(settings.showHints ? "select" : "back");
+      },
       async openLanguages() {
-        page("language");
+        page("language", "select");
         await focus('#language-list [aria-pressed="true"]');
       },
       async chooseLanguage(code) {
         settings.language = code;
-        page("settings");
+        page("settings", "back");
         await focus("#language-open");
       },
       async openCredits() {
-        page("credits");
+        page("credits", "menu");
         try {
           const data = await resources.loadCredits();
           ui.creditsLines = data.pages.flatMap((entry) =>
@@ -73,16 +82,17 @@ export function createGameUi() {
         }
       },
       exitToTitle() {
-        page("title");
+        page("title", "menu");
         return focus("#title-resume");
       },
       requestChapter(chapter) {
         ui.pendingChapter = chapter;
-        page("confirm");
+        page("confirm", "select");
         return focus("#menu-cancel");
       },
       async confirmChapter() {
         if (ui.chapterBusy) return;
+        actions.playUiSound("back");
         ui.chapterBusy = true;
         try {
           await actions.loadChapter(ui.pendingChapter);
@@ -92,6 +102,7 @@ export function createGameUi() {
         }
       },
       async toggleFullscreen() {
+        actions.playUiSound("select");
         ui.settingsStatus = "";
         try {
           if (document.fullscreenElement) await document.exitFullscreen();
@@ -126,11 +137,12 @@ export function createGameUi() {
         return;
       event.preventDefault();
       if (ui.paused && ["confirm", "language", "credits"].includes(ui.page))
-        page("settings");
+        actions.showSettings();
       else actions.toggleMenu();
     };
     document.addEventListener("keydown", onKeydown);
     onScopeDispose(() => {
+      actions.disposeInterfaceSounds?.();
       document.removeEventListener("fullscreenchange", syncFullscreen);
       document.removeEventListener("fullscreenerror", syncFullscreen);
       document.removeEventListener("keydown", onKeydown);

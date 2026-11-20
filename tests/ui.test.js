@@ -8,6 +8,7 @@ import { createResources } from "../src/resources/json.js";
 import { startGame } from "../src/game/runtime.js";
 import { AudioBank } from "../src/engine/audio/audio.js";
 import { SoundtrackDirector } from "../src/engine/audio/soundtrack.js";
+import { InterfaceSounds } from "../src/engine/audio/interface.js";
 import { createBrowser } from "./helpers/browser.js";
 
 let browser, model, wrapper;
@@ -211,7 +212,14 @@ function mockAudio() {
   const log = [];
   vi.spyOn(AudioBank.prototype, "resume").mockImplementation(async function () {
     log.push("resume");
-    this.context = { state: "running" };
+    this.context = { state: "running", close: vi.fn() };
+  });
+  vi.spyOn(AudioBank.prototype, "play").mockImplementation(async function (
+    name,
+    options = {},
+  ) {
+    if (options.shouldPlay && !options.shouldPlay()) return null;
+    return { stop: vi.fn(() => options.onEnd?.()) };
   });
   vi.spyOn(SoundtrackDirector.prototype, "suspend").mockResolvedValue();
   vi.spyOn(SoundtrackDirector.prototype, "syncLocation").mockImplementation(
@@ -240,7 +248,7 @@ test("声音在网络请求前解锁，成功才保存，忙碌状态阻止重�
   const pending = model.actions.toggleSound();
   await flushPromises();
   await model.actions.toggleSound();
-  expect(log).toEqual(["resume", "events"]);
+  expect(log).toEqual(["resume", "resume", "events"]);
   expect(model.ui.soundBusy).toBe(true);
   expect(element("sound").disabled).toBe(true);
   expect(element("sound").textContent.trim()).toBe(model.t("loading"));
@@ -269,6 +277,214 @@ test("声音解锁失败不误写设置，用户可再次启用", async () => {
   expect(element("sound").disabled).toBe(false);
   await model.actions.toggleSound();
   expect(model.ui.soundLabel).toBe("soundOff");
+});
+
+test("界面上下文解锁失败也不保存启用设置，随后可重试", async () => {
+  mockAudio();
+  const resume = AudioBank.prototype.resume;
+  resume.mockImplementationOnce(resume.getMockImplementation());
+  resume.mockRejectedValueOnce(new Error("UI blocked"));
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  await model.actions.toggleSound();
+  expect(model.settings.soundMuted).toBe(true);
+  expect(browser.store.get("gorogoa-web-sound")).toBe("off");
+  expect(model.ui.soundBusy).toBe(false);
+  expect(model.ui.soundLabel).toBe("retrySound");
+  await model.actions.toggleSound();
+  expect(model.settings.soundMuted).toBe(false);
+  expect(model.ui.soundLabel).toBe("soundOff");
+});
+
+test("启用请求中销毁界面，不再启用音效或写入偏好", async () => {
+  mockAudio();
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  let release;
+  const fetch = globalThis.fetch;
+  vi.stubGlobal("fetch", async (url) => {
+    if (new URL(url).pathname.endsWith("events.json"))
+      await new Promise((resolve) => {
+        release = resolve;
+      });
+    return fetch(url);
+  });
+  const pending = model.actions.toggleSound();
+  await flushPromises();
+  model.dispose();
+  release();
+  await pending;
+  expect(model.settings.soundMuted).toBe(true);
+  expect(browser.store.get("gorogoa-web-sound")).toBe("off");
+  expect(model.ui.soundBusy).toBe(false);
+});
+
+test("菜单动作播放明确反馈，内部重置不响，Escape 与按钮返回一致", async () => {
+  mountUi();
+  const play = vi.fn();
+  model.actions.playUiSound = play;
+  await nextTick();
+  await click("language-open");
+  expect(play).toHaveBeenLastCalledWith("select");
+  await escape();
+  expect(play).toHaveBeenLastCalledWith("back");
+  play.mockClear();
+  model.actions.resetMenu();
+  model.actions.showSettings();
+  expect(play).not.toHaveBeenCalled();
+  await click("show-hints");
+  expect(play).toHaveBeenLastCalledWith("back");
+  await click("show-hints");
+  expect(play).toHaveBeenLastCalledWith("select");
+  await model.actions.requestChapter(0);
+  expect(play).toHaveBeenLastCalledWith("select");
+  await click("menu-cancel");
+  expect(play).toHaveBeenLastCalledWith("back");
+  model.actions.loadChapter = vi.fn();
+  await model.actions.requestChapter(0);
+  await model.actions.confirmChapter();
+  expect(play).toHaveBeenLastCalledWith("back");
+});
+
+test("已保存声音开启时，首次打开菜单的手势也能解锁界面声音", async () => {
+  const log = mockAudio();
+  vi.stubGlobal("AudioContext", class {});
+  browser.store.set("gorogoa-web-sound", "on");
+  await bootRuntime();
+  await browser.step(44);
+  await nextTick();
+  expect(log).toEqual([]);
+  const play = vi.spyOn(InterfaceSounds.prototype, "play");
+  const request = vi.spyOn(model.actions, "playUiSound");
+  model.actions.toggleMenu();
+  expect(log).toEqual(["resume", "resume"]);
+  await request.mock.results[0].value;
+  expect(model.ui.paused).toBe(true);
+  expect(SoundtrackDirector.prototype.suspend).toHaveBeenCalled();
+  expect(play).toHaveBeenCalledExactlyOnceWith("menu");
+  const sounds = play.mock.instances[0];
+  expect(sounds.enabled).toBe(true);
+  expect(sounds.slots.size).toBe(1);
+});
+
+test("暂停菜单仍播放界面音效，滑块同步两套音量，静音与销毁清理音源", async () => {
+  mockAudio();
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  await browser.step(44);
+  await nextTick();
+  await model.actions.toggleSound();
+  const play = vi.spyOn(InterfaceSounds.prototype, "play");
+  model.actions.toggleMenu();
+  await flushPromises();
+  expect(model.ui.paused).toBe(true);
+  expect(SoundtrackDirector.prototype.suspend).toHaveBeenCalled();
+  expect(play).toHaveBeenLastCalledWith("menu");
+  const sounds = play.mock.instances[0];
+  expect(sounds.bank.context.state).toBe("running");
+  await click("language-open");
+  expect(play).toHaveBeenLastCalledWith("select");
+  expect(sounds.slots.size).toBe(2);
+  await escape();
+  const volume = vi.spyOn(AudioBank.prototype, "setChannelVolume");
+  model.actions.setVolume("effects", 0.35);
+  expect(volume.mock.calls).toEqual([
+    ["effects", 0.35],
+    ["effects", 0.35],
+  ]);
+  expect(play).toHaveBeenLastCalledWith("slide", { channel: "effects" });
+  await model.actions.toggleSound();
+  expect(sounds.slots.size).toBe(0);
+  const bankPlay = AudioBank.prototype.play.mock.calls.length;
+  await model.actions.playUiSound("menu");
+  expect(AudioBank.prototype.play.mock.calls.length).toBe(bankPlay);
+  await model.actions.toggleSound();
+  expect(sounds.enabled).toBe(true);
+  model.dispose();
+  expect(sounds.enabled).toBe(false);
+  expect(sounds.bank.context.close).toHaveBeenCalledTimes(1);
+});
+
+test("章节重建清理旧音效，菜单关闭反馈在清理后播放", async () => {
+  mockAudio();
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  await browser.step(44);
+  await nextTick();
+  await model.actions.toggleSound();
+  const play = vi.spyOn(InterfaceSounds.prototype, "play");
+  model.actions.toggleMenu();
+  await model.actions.requestChapter(0);
+  const sounds = play.mock.instances[0];
+  await model.actions.confirmChapter();
+  await flushPromises();
+  expect(model.ui.paused).toBe(false);
+  expect(play).toHaveBeenLastCalledWith("menu");
+  expect(sounds.slots.size).toBe(1);
+  const slot = [...sounds.slots][0];
+  expect(slot.handle.stop).not.toHaveBeenCalled();
+});
+
+test("棋盘空白 tap 按 REGION 热点提示，关闭提示、取消与拖动不响，导航不叠加", async () => {
+  mockAudio();
+  browser.store.set("gorogoa-web-sound", "off");
+  await bootRuntime();
+  await browser.step(44);
+  await nextTick();
+  await model.actions.toggleSound();
+  const play = vi.spyOn(InterfaceSounds.prototype, "play");
+  const board = element("board");
+  const emit = (type, x = 0, y = 0) =>
+    board.dispatchEvent(
+      new PointerEvent(type, {
+        clientX: x,
+        clientY: y,
+        pointerId: 1,
+        isPrimary: true,
+        button: 0,
+        pointerType: "touch",
+        bubbles: true,
+      }),
+    );
+  emit("pointermove", 358, 358);
+  for (let i = 0; i < 120 && model.ui.hotspots.length === 0; i++) {
+    await browser.step();
+    await nextTick();
+  }
+  expect(model.ui.hotspots.length).toBeGreaterThan(0);
+  emit("pointerdown");
+  emit("pointerup");
+  expect(play).not.toHaveBeenCalled();
+  element("hotspots").children[0].click();
+  for (
+    let i = 0;
+    i < 120 && !model.ui.hotspots.some((hotspot) => !hotspot.image);
+    i++
+  ) {
+    await browser.step();
+    await nextTick();
+  }
+  expect(model.ui.hotspots.some((hotspot) => !hotspot.image)).toBe(true);
+  emit("pointerdown");
+  emit("pointerup");
+  expect(play).toHaveBeenCalledExactlyOnceWith("ping", {
+    shouldPlay: expect.any(Function),
+  });
+  play.mockClear();
+  model.settings.showHints = false;
+  emit("pointerdown");
+  emit("pointerup");
+  expect(play).not.toHaveBeenCalled();
+  model.settings.showHints = true;
+  emit("pointerdown");
+  emit("pointercancel");
+  emit("pointerup");
+  expect(play).not.toHaveBeenCalled();
+  emit("pointerdown");
+  emit("pointerup", 20, 20);
+  expect(play).not.toHaveBeenCalled();
+  element("hotspots").children[0].click();
+  expect(play).not.toHaveBeenCalled();
 });
 
 test("挂载销毁后移除监听与设置 watch，重复挂载不会重复响应", async () => {
