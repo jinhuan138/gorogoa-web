@@ -20,13 +20,13 @@
 - `pnpm build`：构建生产版本；`pnpm preview`：预览构建产物。
 - `pnpm test`：挂载真实 Vue 组件，回归完整通关、界面交互、界面音效和核心运动；绘图、音频和时钟外围使用测试模拟。`pnpm test:ui` 只运行菜单和设置测试。
 - `node tools/checks/check-prologue.mjs --ending`：验证尾声检查点和片尾翻页；`--chapter-menu`：验证章节载入。
-- `pnpm format:check`：检查源码格式。
+- `pnpm format:check`：本地检查源码格式，不在发布工作流中运行。
 
 以上测试都不启动浏览器，也不执行构建。
 
 ## 发布
 
-推送到 `main` 或手动触发时，`.github/workflows/pages.yml` 会依次运行格式检查、`pnpm test`、`check:codecs`、`check:assets`、尾声与章节菜单回归，然后构建并部署到 GitHub Pages。`0c6e3d5` 的远端构建与部署已成功。
+推送到 `main` 或手动触发时，`.github/workflows/pages.yml` 会依次运行 `pnpm test`、`check:codecs`、`check:assets`、尾声与章节菜单回归，然后构建并部署到 GitHub Pages。`0c6e3d5` 的远端构建与部署已成功。
 
 Vite 使用相对路径发布，构建时按真实引用筛选资源：发布集合共 1036 项，含 732 张贴图、291 段原声音频和运行数据。运行 `node tools/pages/stage-pages.mjs` 可只读检查资源引用和体积。当前静态资源共 646,766,297 字节（约 646.77 MB / 616.80 MiB），另有 Vite 生成的网页、脚本、样式和字体。参见 [GitHub Pages 用量上限](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)。
 

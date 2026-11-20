@@ -110,6 +110,6 @@
 | package.json、pnpm-lock.yaml | 迁移到 pnpm，删除 `package-lock.json`；新增 Anime.js 4.5.0 |
 | src/game/motion.js、src/game/timeline.js、src/engine/model/board.js、src/engine/model/navigation.js、tests/motion.test.js | 核心运动收拢为纯采样控制器，直接以 elapsed 调用原版采样函数；Anime.js 只编排启动页和片尾的淡入淡出，由冻结时钟 seek 推进（`610dec6`） |
 | src/game/screens/startup.js、src/game/screens/credits.js、tests/ui.test.js | 启动页与片尾改用界面时间线，不再需要显式取消 |
-| .github/workflows/pages.yml | 改用 pnpm，增加推送到 `main` 时自动构建部署（`f2bed84`）；修复 Prettier 差异后，`0c6e3d5` 的远端构建与部署成功 |
+| .github/workflows/pages.yml | 改用 pnpm，增加推送到 `main` 时自动构建部署（`f2bed84`）；修复 Prettier 差异后，`0c6e3d5` 的远端构建与部署成功；之后按用户要求从工作流中移除格式检查 |
 
 发布集合仍为 1036 项、732 张贴图、291 段音频；因运行时逻辑树缩小，静态资源降至 646,766,297 字节。
