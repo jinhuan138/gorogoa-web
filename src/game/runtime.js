@@ -425,17 +425,18 @@ export async function startGame({
     updateGameClockPause();
   }
   function updateBoardCursor() {
+    if (waitingForBoardTextures && !drag) return;
     const hovered = [...state.hovered][0];
-    const waiting =
-      waitingForBoardTextures || motion.busy || (hovered && !canMove(hovered));
+    const waiting = motion.busy || (hovered && !canMove(hovered));
     const canDrag = hovered && state.coords.has(hovered) && showGrid();
-    board.dataset.cursor = drag
+    const cursor = drag
       ? "move"
       : waiting
         ? "wait"
         : canDrag
           ? "move"
           : "default";
+    if (board.dataset.cursor !== cursor) board.dataset.cursor = cursor;
   }
   listen(board, "pointerdown", (event) => {
     if (!state || inputBusy(true) || !event.isPrimary || event.button !== 0)
@@ -959,9 +960,8 @@ export async function startGame({
   async function prepareBoardTextures(urls) {
     const preparation = { ready: false };
     texturePreparation = preparation;
+    // 保留与上一帧画面对应的光标和热点；等待期间 inputBusy 仍拦截新操作。
     setBoardTextureWait(true);
-    updateBoardCursor();
-    updateButtons();
     const ready = renderer.atlas.prepare(urls).then(({ failures }) => {
       if (preparation !== texturePreparation) return;
       for (const [url, reason] of failures) textureFailures.set(url, reason);
@@ -1102,7 +1102,6 @@ export async function startGame({
           )
         )
           blockedCards.add(card.guid);
-      updateBoardCursor();
       // A layer that no longer has an enabled graphic must stop gating state transitions.
       // Combine all reports: a linked or stacked view can show the same layer as another card.
       layerStatus.clear();
@@ -1209,6 +1208,7 @@ export async function startGame({
       canvas.dataset.phase = state.storyPhase;
       paintEnding(time);
       ui.phase = state.storyPhase;
+      updateBoardCursor();
       updateButtons();
       if (
         saveStorage &&
