@@ -193,6 +193,20 @@ canvas {
   height: 100%;
   touch-action: none;
 }
+.board-card-layers {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+}
+.board-card-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-layer-size);
+  height: var(--card-layer-size);
+}
 button {
   font: inherit;
 }

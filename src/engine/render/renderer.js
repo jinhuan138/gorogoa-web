@@ -34,6 +34,16 @@ function drawLeaves(list, leaves = []) {
   }
   return leaves;
 }
+function erasesBackdrop(list) {
+  return list.some(
+    (item) =>
+      (item.kind === "mask" && item.erase) ||
+      (item.kind === "polygon" && erasesBackdrop(item.children)),
+  );
+}
+export function needsBoardBackdrop(report) {
+  return erasesBackdrop(report.drawn);
+}
 export function reportTextureUrls(reports) {
   return [
     ...new Set(
@@ -42,6 +52,11 @@ export function reportTextureUrls(reports) {
       ),
     ),
   ];
+}
+export function failedTextureUrls(reports, failures) {
+  return failures.size
+    ? reportTextureUrls(reports).filter((url) => failures.has(url))
+    : [];
 }
 
 export class SceneRenderer {
@@ -63,6 +78,7 @@ export class SceneRenderer {
     this.holeContent = holeContent;
     this.scriptGraphics = scriptGraphics;
     this.sequenceCache = new WeakMap();
+    this.cardDrawings = new WeakMap();
     this.animation = new AnimationSampler(project, {
       sequenceFrames: (node) => this.sequenceFrames(node),
       scriptDurationMillis,
@@ -935,40 +951,42 @@ export class SceneRenderer {
   }
   async render(ctx, locationGUID, options = {}) {
     const report = options.report ?? this.buildDrawList(locationGUID, options);
-    const leaves = drawLeaves(report.drawn);
-    this.atlas.retainActive([
-      ...new Set([
-        ...(options.activeTextureUrls || []),
-        ...leaves.map((item) => item.region.textureUrl),
-      ]),
+    const { rasterScale = 2, onTextureLoaded } = options;
+    let images = this.atlas.decoded;
+    let failures = options.textureFailures;
+    if (!failures) {
+      const urls = reportTextureUrls([report]);
+      this.atlas.retainActive([...(options.activeTextureUrls || []), ...urls]);
+      ({ images, failures } = await this.atlas.prepare(urls, onTextureLoaded));
+    }
+    this.paintReport(ctx, report, rasterScale, images, failures);
+    return report;
+  }
+  renderCardLayer(canvas, location, report, rasterScale, failures) {
+    const drawing = JSON.stringify([
+      report.drawn,
+      failedTextureUrls([report], failures),
     ]);
-    const images = new Map();
-    const progressUrls = options.onTextureLoaded ? new Set() : null;
-    await Promise.all(
-      leaves.map(async (item) => {
-        let loaded = false;
-        try {
-          images.set(item, await this.atlas.image(item.region));
-          loaded = true;
-        } catch (error) {
-          report.missing.push({
-            kind: "image-load",
-            source: item.source,
-            reason: error.message,
-          });
-        } finally {
-          const url = item.region.textureUrl;
-          if (progressUrls && !progressUrls.has(url)) {
-            progressUrls.add(url);
-            options.onTextureLoaded(url, loaded);
-          }
-        }
-      }),
-    );
-    const surfaceSize = Math.max(
-      1,
-      Math.ceil(CARD_SIZE * (options.rasterScale ?? 2)),
-    );
+    const cached = this.cardDrawings.get(canvas);
+    if (cached?.drawing === drawing && cached.rasterScale === rasterScale)
+      return;
+    const size = Math.max(1, Math.ceil(CARD_SIZE * rasterScale));
+    if (canvas.width !== size || canvas.height !== size)
+      canvas.width = canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(size / CARD_SIZE, 0, 0, size / CARD_SIZE, 0, 0);
+    ctx.fillStyle = "#f2f2f0";
+    ctx.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
+    return this.render(ctx, location, {
+      report,
+      rasterScale,
+      textureFailures: failures,
+    }).then(() => {
+      this.cardDrawings.set(canvas, { drawing, rasterScale });
+    });
+  }
+  paintReport(ctx, report, rasterScale, images, failures) {
+    const surfaceSize = Math.max(1, Math.ceil(CARD_SIZE * rasterScale));
     const surfaceScale = surfaceSize / CARD_SIZE;
     const surface = () => {
       const canvas =
@@ -986,7 +1004,8 @@ export class SceneRenderer {
         target.save();
         target.globalAlpha *= item.alpha;
         if (!item.kind) {
-          const image = images.get(item);
+          const url = item.region.textureUrl;
+          const image = images.get(url);
           if (image) {
             if (item.haze?.[3]) {
               const [canvas, layer] = surface();
@@ -1007,6 +1026,12 @@ export class SceneRenderer {
                 ...item.dest,
               );
             }
+          } else {
+            report.missing.push({
+              kind: "image-load",
+              source: item.source,
+              reason: failures.get(url) ?? "贴图尚未解码",
+            });
           }
         } else if (item.kind === "polygon") {
           target.transform(...item.matrix);
@@ -1084,7 +1109,6 @@ export class SceneRenderer {
     ctx.clip();
     paint(ctx, report.drawn);
     ctx.restore();
-    return report;
   }
 }
 export function buildDrawList(

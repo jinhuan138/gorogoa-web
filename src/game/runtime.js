@@ -25,7 +25,12 @@ import {
   finishCardDrop,
 } from "../engine/model/board.js";
 import { loadChapterCheckpoint, loadProject } from "../engine/model/project.js";
-import { SceneRenderer, reportTextureUrls } from "../engine/render/renderer.js";
+import {
+  SceneRenderer,
+  failedTextureUrls,
+  needsBoardBackdrop,
+  reportTextureUrls,
+} from "../engine/render/renderer.js";
 import { RuntimeState } from "../engine/model/state.js";
 import { ProjectScripts } from "../engine/model/scripts.js";
 import { EndingScreen } from "./screens/ending.js";
@@ -54,6 +59,16 @@ export async function startGame({
   boardFrame.width = boardFrame.height = canvas.width;
   const frameContext = boardFrame.getContext("2d");
   const board = document.getElementById("board");
+  const cardLayerHost = document.createElement("div");
+  cardLayerHost.className = "board-card-layers";
+  cardLayerHost.setAttribute("aria-hidden", "true");
+  cardLayerHost.style.setProperty(
+    "--card-layer-size",
+    `${(100 * CARD_SIZE) / BOARD_SIZE}%`,
+  );
+  canvas.after(cardLayerHost);
+  const cardLayers = new Map();
+  let backdropDrawing = null;
   const rotatedMobileStage = window.matchMedia(
     "(pointer: coarse) and (orientation: portrait)",
   );
@@ -135,7 +150,10 @@ export async function startGame({
   let chapterMilestones = [];
   let margins = [];
   let activeMargin = null;
-  let pausedAt = null;
+  let gameClockPausedAt = null;
+  let waitingForBoardTextures = false;
+  let texturePreparation = null;
+  const textureFailures = new Map();
   soundBank.setChannelVolume("music", settings.volumeMusic);
   soundBank.setChannelVolume("effects", settings.volumeEffects);
   for (const [channel, value] of [
@@ -188,8 +206,16 @@ export async function startGame({
     UP_BUTTON: "up",
     DOWN_BUTTON: "down",
   };
-  const now = () =>
-    startup.active ? 0 : ((pausedAt ?? pageNow()) - epoch) / 1000;
+  const gameClockTime = () => gameClockPausedAt ?? pageNow();
+  const now = () => (startup.active ? 0 : (gameClockTime() - epoch) / 1000);
+  function updateGameClockPause() {
+    if (ui.paused || (waitingForBoardTextures && !texturePreparation?.ready)) {
+      gameClockPausedAt ??= pageNow();
+    } else if (gameClockPausedAt !== null) {
+      epoch += pageNow() - gameClockPausedAt;
+      gameClockPausedAt = null;
+    }
+  }
   const motion = new GameMotion({
     navigation: (move) => state.setLocation(move.card, move.destination),
     flight: ({ drag: drop, plan }) => {
@@ -211,11 +237,13 @@ export async function startGame({
   };
   const showGrid = () =>
     state.storyPhase === "CHAPTERS" || Boolean(motion.closing);
-  const inputBusy = () =>
+  const inputBusy = (allowPreparedTextures = false) =>
     disposed ||
     backgrounded ||
     startup.active ||
-    pausedAt !== null ||
+    ui.paused ||
+    (waitingForBoardTextures &&
+      !(allowPreparedTextures && texturePreparation?.ready)) ||
     Boolean(drag || motion.busy);
   const canMove = (guid) => !blockedCards.has(guid);
   function cards() {
@@ -344,6 +372,7 @@ export async function startGame({
     if (!state.getTransitions(card.guid).includes(transition)) return;
     try {
       const plan = planTransition(project, transition);
+      textureFailures.clear();
       prefetchPlan(plan);
       state.targets.set(card.guid, transition.attrs.guid);
       if (plan.durationSeconds > 0) audioFocus = card.guid;
@@ -391,7 +420,10 @@ export async function startGame({
     if (old !== [...state.hovered].join(",")) dirty = true;
     updateBoardCursor();
   }
-  let waitingForBoardTextures = false;
+  function setBoardTextureWait(waiting) {
+    waitingForBoardTextures = waiting;
+    updateGameClockPause();
+  }
   function updateBoardCursor() {
     const hovered = [...state.hovered][0];
     const waiting =
@@ -402,11 +434,12 @@ export async function startGame({
       : waiting
         ? "wait"
         : canDrag
-          ? "hand"
+          ? "move"
           : "default";
   }
   listen(board, "pointerdown", (event) => {
-    if (!state || inputBusy() || !event.isPrimary || event.button !== 0) return;
+    if (!state || inputBusy(true) || !event.isPrimary || event.button !== 0)
+      return;
     setHover(event);
     tap = event.target.closest(".hotspot")
       ? null
@@ -432,7 +465,7 @@ export async function startGame({
       press &&
       event.pointerId === press.id &&
       !drag &&
-      !inputBusy() &&
+      !inputBusy(true) &&
       canMove(press.guid) &&
       Math.hypot(event.clientX - press.clientX, event.clientY - press.clientY) >
         7
@@ -536,9 +569,13 @@ export async function startGame({
   }
   function restart({ restoreSaved = false, checkpoint = null } = {}) {
     if (!project) return;
+    texturePreparation = null;
+    textureFailures.clear();
+    setBoardTextureWait(false);
+    backdropDrawing = null;
     soundDirector?.stop();
     interfaceSounds.stop();
-    epoch = pageNow();
+    epoch = gameClockTime();
     graphicTimes.clear();
     layerStatus.clear();
     blockedCards.clear();
@@ -597,17 +634,13 @@ export async function startGame({
     return textureUrls.get(name);
   }
   function showMenu(open, feedback = true) {
-    if (disposed || startup.active || !state || open === (pausedAt !== null))
-      return;
+    if (disposed || startup.active || !state || open === ui.paused) return;
     if (open) {
       cancelPointer();
-      pausedAt = pageNow();
       actions.resetMenu();
-    } else {
-      epoch += pageNow() - pausedAt;
-      pausedAt = null;
     }
     ui.paused = open;
+    updateGameClockPause();
     if (feedback) actions.playUiSound("menu");
     updateAudioPause().catch((error) =>
       console.warn("声音暂停状态更新失败", error),
@@ -615,7 +648,7 @@ export async function startGame({
     updateButtons();
     pauseButton.focus();
   }
-  actions.toggleMenu = () => showMenu(pausedAt === null);
+  actions.toggleMenu = () => showMenu(!ui.paused);
   actions.navigate = (card, transition) =>
     navigate({ guid: card }, project.get(transition));
   function updateMargin() {
@@ -656,7 +689,7 @@ export async function startGame({
       const checkpoint = chapter
         ? await loadChapterCheckpoint(chapter === 6 ? "end" : chapter)
         : null;
-      const menuWasOpen = pausedAt !== null;
+      const menuWasOpen = ui.paused;
       showMenu(false, false);
       restart({ checkpoint });
       if (menuWasOpen) actions.playUiSound("menu");
@@ -800,10 +833,158 @@ export async function startGame({
       BOARD_SIZE * 2,
       Math.max(1, Math.round(Math.min(width, height) * density)),
     );
-    if (boardFrame.width === pixels && boardFrame.height === pixels) return;
+    if (boardFrame.width === pixels) return;
     boardFrame.width = boardFrame.height = pixels;
     rasterScale = pixels / BOARD_SIZE;
     dirty = true;
+  }
+  function positionCardLayer(layer, [x, y]) {
+    if (layer.x === x && layer.y === y) return;
+    layer.canvas.style.transform = `translate(${(100 * x) / CARD_SIZE}%, ${(100 * y) / CARD_SIZE}%)`;
+    layer.x = x;
+    layer.y = y;
+  }
+  async function paintCardLayers(entries) {
+    const paints = [];
+    const layers = entries.map(({ card, report, position }) => {
+      let layer = cardLayers.get(card.guid);
+      if (!layer) {
+        const canvas = document.createElement("canvas");
+        canvas.className = "board-card-layer";
+        layer = { canvas };
+      }
+      const paint = renderer.renderCardLayer(
+        layer.canvas,
+        card.location,
+        report,
+        rasterScale,
+        textureFailures,
+      );
+      if (paint) paints.push(paint);
+      return { guid: card.guid, position, layer };
+    });
+    if (paints.length) await Promise.all(paints);
+    return layers;
+  }
+  function presentCardLayers(layers) {
+    const visible = new Set(layers.map(({ guid }) => guid));
+    for (const [guid, layer] of cardLayers) {
+      if (visible.has(guid)) continue;
+      layer.canvas.remove();
+      cardLayers.delete(guid);
+    }
+    for (const [order, { guid, position, layer }] of layers.entries()) {
+      if (!cardLayers.has(guid)) {
+        cardLayers.set(guid, layer);
+        cardLayerHost.append(layer.canvas);
+      }
+      positionCardLayer(layer, position);
+      if (layer.order !== order) {
+        layer.canvas.style.zIndex = order;
+        layer.order = order;
+      }
+    }
+  }
+  async function presentBoard(entries, frameState) {
+    if (disposed || backgrounded || ui.paused || state !== frameState)
+      return false;
+    const layered = state.storyPhase === "CHAPTERS" && !ui.loading;
+    // 擦除必须作用于网格和下方卡片。其上方的卡片仍可独立显示。
+    const backdropCount = layered
+      ? entries.findLastIndex(({ report }) => needsBoardBackdrop(report)) + 1
+      : entries.length;
+    const backdrop = entries.slice(0, backdropCount);
+    const grid = showGrid()
+      ? [
+          motion.opening?.sample.progress ?? 1,
+          motion.closing?.sample.scale,
+          motion.closing?.sample.alpha,
+        ]
+      : null;
+    const drawing = layered
+      ? JSON.stringify([
+          rasterScale,
+          grid,
+          backdrop.map(({ report, position }) => [position, report.drawn]),
+          failedTextureUrls(
+            backdrop.map(({ report }) => report),
+            textureFailures,
+          ),
+        ])
+      : null;
+    const repaint = drawing === null || drawing !== backdropDrawing;
+    if (repaint) {
+      frameContext.setTransform(1, 0, 0, 1, 0, 0);
+      frameContext.clearRect(0, 0, boardFrame.width, boardFrame.height);
+      frameContext.scale(rasterScale, rasterScale);
+      if (grid) paintGrid(frameContext, ...grid);
+      for (const {
+        card,
+        report,
+        position: [x, y],
+      } of backdrop) {
+        frameContext.save();
+        frameContext.translate(x, y);
+        frameContext.fillStyle = "#f2f2f0";
+        frameContext.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
+        try {
+          await renderer.render(frameContext, card.location, {
+            rasterScale,
+            report,
+            textureFailures,
+          });
+        } finally {
+          frameContext.restore();
+        }
+      }
+    }
+    if (disposed || backgrounded || ui.paused || state !== frameState)
+      return false;
+    const layers = await paintCardLayers(entries.slice(backdropCount));
+    if (disposed || backgrounded || ui.paused || state !== frameState)
+      return false;
+    presentCardLayers(layers);
+    if (repaint) {
+      if (
+        canvas.width !== boardFrame.width ||
+        canvas.height !== boardFrame.height
+      )
+        canvas.width = canvas.height = boardFrame.width;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(boardFrame, 0, 0);
+      backdropDrawing = drawing;
+    }
+    return true;
+  }
+  async function prepareBoardTextures(urls) {
+    const preparation = { ready: false };
+    texturePreparation = preparation;
+    setBoardTextureWait(true);
+    updateBoardCursor();
+    updateButtons();
+    const ready = renderer.atlas.prepare(urls).then(({ failures }) => {
+      if (preparation !== texturePreparation) return;
+      for (const [url, reason] of failures) textureFailures.set(url, reason);
+      preparation.ready = true;
+      updateGameClockPause();
+    });
+    // 已在本轮完成的解码可以直接显示本帧，耗时的解码不占用后续帧。
+    let timer;
+    await Promise.race([
+      ready,
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, 0);
+      }),
+    ]);
+    clearTimeout(timer);
+    if (preparation !== texturePreparation) return false;
+    if (preparation.ready) return true;
+    ready.then(() => {
+      if (preparation !== texturePreparation) return;
+      dirty = true;
+      scheduleFrame();
+    });
+    return false;
   }
   async function frame() {
     frameRequest = null;
@@ -813,6 +994,10 @@ export async function startGame({
       resizeBoard();
       await drawFrame();
     } finally {
+      if (!texturePreparation && waitingForBoardTextures) {
+        setBoardTextureWait(false);
+        updateBoardCursor();
+      }
       frameRunning = false;
       scheduleFrame();
     }
@@ -829,7 +1014,18 @@ export async function startGame({
       }
     }
     if (!bootReady) return;
-    if (pausedAt !== null) return;
+    if (ui.paused) return;
+    if (texturePreparation && !texturePreparation.ready) {
+      const draggedLayer = cardLayers.get(drag?.draggedGUID);
+      if (draggedLayer) {
+        positionCardLayer(draggedLayer, drag.topLeft);
+        if (draggedLayer.order !== cardLayers.size) {
+          draggedLayer.canvas.style.zIndex = cardLayers.size;
+          draggedLayer.order = cardLayers.size;
+        }
+      }
+      return;
+    }
     try {
       const time = now();
       if (motion.update(time)) dirty = true;
@@ -946,99 +1142,66 @@ export async function startGame({
       if (dirty || hasAnimations || motion.navigation || newClock) {
         dirty = false;
         const frameState = state;
-        // Decoding a card can yield to the browser. Keep the last finished board visible until every card is painted.
-        frameContext.setTransform(1, 0, 0, 1, 0, 0);
-        frameContext.clearRect(0, 0, boardFrame.width, boardFrame.height);
-        frameContext.scale(rasterScale, rasterScale);
-        if (showGrid())
-          paintGrid(
-            frameContext,
-            motion.opening?.sample.progress ?? 1,
-            motion.closing?.sample.scale,
-            motion.closing?.sample.alpha,
-          );
         const activeTextureUrls = reportTextureUrls(
           reports.map((entry) => entry.report),
         );
-        waitingForBoardTextures = [...activeTextureUrls].some(
-          (url) => !renderer.atlas.images.has(url),
+        renderer.atlas.retainActive(activeTextureUrls);
+        for (const url of textureFailures.keys())
+          if (
+            !renderer.atlas.active.has(url) ||
+            renderer.atlas.decoded.has(url)
+          )
+            textureFailures.delete(url);
+        const missing = activeTextureUrls.filter(
+          (url) =>
+            !renderer.atlas.decoded.has(url) && !textureFailures.has(url),
         );
-        updateBoardCursor();
-        const sceneLoads = ui.loading
-          ? new Map(
-              [...activeTextureUrls]
-                .filter(
-                  (url) =>
-                    renderer.atlas.images.has(url) &&
-                    !renderer.atlas.pending.has(url),
-                )
-                .map((url) => [url, true]),
-            )
-          : null;
-        const onTextureLoaded = sceneLoads
-          ? (url, loaded) => {
-              if (state !== frameState) return;
-              sceneLoads.set(url, loaded);
-              const completed = [...sceneLoads.values()].filter(Boolean).length;
-              updateStartupProgress(
-                "loadingScene",
-                completed,
-                activeTextureUrls.length,
-                sceneLoads.size - completed,
-              );
-            }
-          : undefined;
-        if (sceneLoads)
-          updateStartupProgress(
-            "loadingScene",
-            sceneLoads.size,
-            activeTextureUrls.length,
-          );
+        if (ui.loading) {
+          let completed =
+            activeTextureUrls.length - missing.length - textureFailures.size;
+          let failed = textureFailures.size;
+          const progress = () =>
+            updateStartupProgress(
+              "loadingScene",
+              completed,
+              activeTextureUrls.length,
+              failed,
+            );
+          progress();
+          if (missing.length) {
+            setBoardTextureWait(true);
+            const { failures } = await renderer.atlas.prepare(
+              missing,
+              (_, loaded) => {
+                if (state !== frameState) return;
+                if (loaded) completed++;
+                else failed++;
+                progress();
+              },
+            );
+            if (state === frameState && !disposed)
+              for (const [url, reason] of failures)
+                textureFailures.set(url, reason);
+          }
+        } else if (missing.length) {
+          if (!(await prepareBoardTextures(missing))) return;
+        }
         const entries = reports.map(({ card, report }) => ({
           card,
           report,
           position: placement(card),
         }));
-        for (const {
-          card,
-          report,
-          position: [x, y],
-        } of entries) {
-          frameContext.save();
-          frameContext.translate(x, y);
-          frameContext.fillStyle = "#f2f2f0";
-          frameContext.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
-          try {
-            await renderer.render(frameContext, card.location, {
-              activeTextureUrls,
-              rasterScale,
-              report,
-              onTextureLoaded,
-            });
-          } finally {
-            frameContext.restore();
-          }
-        }
-        waitingForBoardTextures = false;
-        if (
-          disposed ||
-          backgrounded ||
-          pausedAt !== null ||
-          state !== frameState
-        ) {
+        if (!(await presentBoard(entries, frameState))) {
           dirty = true;
           return;
         }
-        if (
-          canvas.width !== boardFrame.width ||
-          canvas.height !== boardFrame.height
-        )
-          canvas.width = canvas.height = boardFrame.width;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(boardFrame, 0, 0);
-        updateBoardCursor();
-        if (ui.loading) reportStartup();
-        ui.loading = false;
+        texturePreparation = null;
+        setBoardTextureWait(false);
+        if (ui.loading) {
+          reportStartup();
+          ui.loading = false;
+          if (showGrid()) dirty = true;
+        }
       }
       canvas.dataset.locations = cards()
         .map((card) => card.location)
@@ -1057,7 +1220,8 @@ export async function startGame({
           lastSavedVersion = state.version;
       }
     } catch (error) {
-      waitingForBoardTextures = false;
+      texturePreparation = null;
+      setBoardTextureWait(false);
       updateBoardCursor();
       console.error(error);
       showNotice(t("renderError"));
@@ -1129,6 +1293,10 @@ export async function startGame({
   actions.disposeGame = () => {
     if (disposed) return;
     disposed = true;
+    texturePreparation = null;
+    textureFailures.clear();
+    cardLayers.clear();
+    cardLayerHost.remove();
     ui.startupProgress = [];
     cancelPointer();
     if (frameRequest !== null) cancelAnimationFrame(frameRequest);
@@ -1267,7 +1435,7 @@ export async function startGame({
     await Promise.all([
       syncAudioBank(
         soundBank,
-        () => backgrounded || settings.soundMuted || pausedAt !== null,
+        () => backgrounded || settings.soundMuted || ui.paused,
         soundDirector,
       ),
       syncAudioBank(interfaceBank, () => backgrounded || settings.soundMuted),
@@ -1277,7 +1445,7 @@ export async function startGame({
       !disposed &&
       !backgrounded &&
       !settings.soundMuted &&
-      pausedAt === null
+      !ui.paused
     )
       syncSoundtrack();
   }

@@ -23,6 +23,7 @@ export class AtlasStore {
     this.texturesByUrl = new Map(manifest.textures.map((t) => [t.url, t]));
     this.regions = new Map();
     this.images = new Map();
+    this.decoded = new Map();
     this.active = new Set();
     this.lastUsed = new Map();
     this.cacheTick = 0;
@@ -56,6 +57,7 @@ export class AtlasStore {
   }
   remove(url) {
     this.images.delete(url);
+    this.decoded.delete(url);
     this.lastUsed.delete(url);
     this.prefetched.delete(url);
   }
@@ -115,6 +117,21 @@ export class AtlasStore {
     // 预取失败不影响导航；正式绘制仍可按需重试。
     return Promise.allSettled(requests);
   }
+  async prepare(urls, onTextureLoaded) {
+    const images = new Map();
+    const failures = new Map();
+    await Promise.all(
+      urls.map(async (url) => {
+        try {
+          images.set(url, await this.image({ textureUrl: url }));
+        } catch (error) {
+          failures.set(url, error.message);
+        }
+        onTextureLoaded?.(url, !failures.has(url));
+      }),
+    );
+    return { images, failures };
+  }
   image(region) {
     if (!this.baseUrl) return Promise.reject(new Error("缺少图片根URL"));
     let pending = this.images.get(region.textureUrl);
@@ -128,7 +145,9 @@ export class AtlasStore {
       this.images.set(region.textureUrl, pending);
       this.pending.add(region.textureUrl);
       pending.then(
-        () => {
+        (image) => {
+          if (this.images.get(region.textureUrl) === pending)
+            this.decoded.set(region.textureUrl, image);
           this.pending.delete(region.textureUrl);
           this.prune();
         },
