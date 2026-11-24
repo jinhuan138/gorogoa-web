@@ -82,6 +82,7 @@ export class AnimationSampler {
     this.sequenceFrames = sequenceFrames;
     this.scriptDurationMillis = scriptDurationMillis;
     this.channels = new WeakMap();
+    this.keyframeTimeCache = new WeakMap();
     this.durationCache = new WeakMap();
   }
   keyframeSource(node) {
@@ -120,15 +121,20 @@ export class AnimationSampler {
   maxTime(node, ignoreOverride = false) {
     if (!ignoreOverride && node.attrs.overrideDuration === "true")
       return Number(node.attrs.overrideDurationValue);
-    return Math.max(
-      0,
-      ...[
-        "positionByKeyframe",
-        "rotationByKeyframe",
-        "scaleByKeyframe",
-        "elapsedFractionByKeyframe",
-      ].flatMap((name) => this.channel(node, name).map((row) => row.time)),
-    );
+    let time = this.keyframeTimeCache.get(node);
+    if (time === undefined) {
+      time = Math.max(
+        0,
+        ...[
+          "positionByKeyframe",
+          "rotationByKeyframe",
+          "scaleByKeyframe",
+          "elapsedFractionByKeyframe",
+        ].map((name) => this.channel(node, name).at(-1)?.time ?? 0),
+      );
+      this.keyframeTimeCache.set(node, time);
+    }
+    return time;
   }
   sampleFrame(node, name, time) {
     const rows = this.channel(node, name);

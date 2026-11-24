@@ -68,6 +68,7 @@ export async function startGame({
   );
   canvas.after(cardLayerHost);
   const cardLayers = new Map();
+  const staticCardReports = new Map();
   let backdropDrawing = null;
   const rotatedMobileStage = window.matchMedia(
     "(pointer: coarse) and (orientation: portrait)",
@@ -180,6 +181,7 @@ export async function startGame({
     drag = null,
     press = null,
     tap = null,
+    pendingTouchMove = null,
     lastHotspotKey = "",
     lastStateVersion = -1;
   let blockedCards = new Set();
@@ -375,6 +377,7 @@ export async function startGame({
       textureFailures.clear();
       prefetchPlan(plan);
       state.targets.set(card.guid, transition.attrs.guid);
+      staticCardReports.clear();
       if (plan.durationSeconds > 0) audioFocus = card.guid;
       motion.start(
         "navigation",
@@ -417,7 +420,10 @@ export async function startGame({
       old = [...state.hovered].join(",");
     state.hovered.clear();
     if (card) state.hovered.add(card.guid);
-    if (old !== [...state.hovered].join(",")) dirty = true;
+    if (old !== [...state.hovered].join(",")) {
+      dirty = true;
+      staticCardReports.clear();
+    }
     updateBoardCursor();
   }
   function setBoardTextureWait(waiting) {
@@ -441,6 +447,8 @@ export async function startGame({
   listen(board, "pointerdown", (event) => {
     if (!state || inputBusy(true) || !event.isPrimary || event.button !== 0)
       return;
+    if (pendingTouchMove?.pointerId === event.pointerId)
+      pendingTouchMove = null;
     setHover(event);
     tap = event.target.closest(".hotspot")
       ? null
@@ -455,11 +463,24 @@ export async function startGame({
       id: event.pointerId,
       clientX: event.clientX,
       clientY: event.clientY,
+      origin,
       offset: point.map((v, i) => v - origin[i]),
     };
   });
+  function updatePointerPosition(event) {
+    if (drag && event.pointerId === drag.id) {
+      drag.topLeft = logicalPoint(event).map((v, i) => v - drag.offset[i]);
+      dirty = true;
+      updateBoardCursor();
+    } else setHover(event);
+  }
+  function flushTouchMove() {
+    const event = pendingTouchMove;
+    pendingTouchMove = null;
+    if (event) updatePointerPosition(event);
+  }
   listen(board, "pointermove", (event) => {
-    if (!state || !event.isPrimary) return;
+    if (!state || backgrounded || disposed || !event.isPrimary) return;
     if (press && event.pointerId === press.id && !event.buttons && !drag)
       press = null;
     if (
@@ -474,6 +495,7 @@ export async function startGame({
       drag = {
         ...beginCardDrag(links, press.guid),
         offset: press.offset,
+        topLeft: press.origin,
         id: press.id,
       };
       if (drag.direction === "OVER") {
@@ -484,17 +506,15 @@ export async function startGame({
       soundDirector?.playInterface("int_lift_card");
       press = tap = null;
     }
-    if (drag && event.pointerId === drag.id) {
-      drag.topLeft = logicalPoint(event).map((v, i) => v - drag.offset[i]);
-      dirty = true;
-      updateBoardCursor();
-    } else setHover(event);
+    if (event.pointerType === "touch") pendingTouchMove = event;
+    else updatePointerPosition(event);
   });
   listen(board, "pointerleave", (event) => {
     // 触摸抬起也会触发离开；保留最后触及的卡片，让下一帧处理原版入场条件。
     if (state && !drag && event.pointerType !== "touch") {
       press = tap = null;
       state.hovered.clear();
+      staticCardReports.clear();
       dirty = true;
       updateBoardCursor();
     }
@@ -524,6 +544,10 @@ export async function startGame({
   }
   listen(board, "pointerup", (event) => {
     if (!event.isPrimary || event.button !== 0) return;
+    if (pendingTouchMove?.pointerId === event.pointerId) {
+      if (drag?.id === event.pointerId) pendingTouchMove = null;
+      else flushTouchMove();
+    }
     const tapped = event.pointerId === tap?.id ? tap : null;
     if (tapped) tap = null;
     if (event.pointerId === press?.id) press = null;
@@ -547,6 +571,8 @@ export async function startGame({
     dirty = true;
   });
   function abandonPointer(event) {
+    if (pendingTouchMove?.pointerId === event.pointerId)
+      pendingTouchMove = null;
     if (event.pointerId === tap?.id) tap = null;
     if (event.pointerId === press?.id) press = null;
     if (event.pointerId !== drag?.id) return;
@@ -561,7 +587,7 @@ export async function startGame({
   });
   function cancelPointer() {
     const current = drag;
-    drag = press = tap = null;
+    drag = press = tap = pendingTouchMove = null;
     if (!current) return;
     cancelCardDrag(links, current);
     if (board.hasPointerCapture(current.id))
@@ -578,10 +604,11 @@ export async function startGame({
     interfaceSounds.stop();
     epoch = gameClockTime();
     graphicTimes.clear();
+    staticCardReports.clear();
     layerStatus.clear();
     blockedCards.clear();
     motion.cancel();
-    drag = press = tap = null;
+    drag = press = tap = pendingTouchMove = null;
     scripts = new ProjectScripts(project);
     state = new RuntimeState(project, {
       scriptEvaluator: (definition, predicate) =>
@@ -854,15 +881,17 @@ export async function startGame({
         canvas.className = "board-card-layer";
         layer = { canvas };
       }
-      const paint = renderer.renderCardLayer(
-        layer.canvas,
-        card.location,
-        report,
-        rasterScale,
-        textureFailures,
-      );
-      if (paint) paints.push(paint);
-      return { guid: card.guid, position, layer };
+      if (layer.report !== report || layer.rasterScale !== rasterScale) {
+        const paint = renderer.renderCardLayer(
+          layer.canvas,
+          card.location,
+          report,
+          rasterScale,
+          textureFailures,
+        );
+        if (paint) paints.push(paint);
+      }
+      return { guid: card.guid, position, layer, report };
     });
     if (paints.length) await Promise.all(paints);
     return layers;
@@ -874,7 +903,9 @@ export async function startGame({
       layer.canvas.remove();
       cardLayers.delete(guid);
     }
-    for (const [order, { guid, position, layer }] of layers.entries()) {
+    for (const [order, { guid, position, layer, report }] of layers.entries()) {
+      layer.report = textureFailures.size ? null : report;
+      layer.rasterScale = rasterScale;
       if (!cardLayers.has(guid)) {
         cardLayers.set(guid, layer);
         cardLayerHost.append(layer.canvas);
@@ -992,6 +1023,7 @@ export async function startGame({
     frameRunning = true;
     try {
       resizeBoard();
+      flushTouchMove();
       await drawFrame();
     } finally {
       if (!texturePreparation && waitingForBoardTextures) {
@@ -1030,10 +1062,9 @@ export async function startGame({
       const time = now();
       if (motion.update(time)) dirty = true;
       const viewpoint = motion.navigation?.sample.viewpoint;
-      if (scripts.update(state, time, { displayCoords })) dirty = true;
-      if (state.version !== lastStateVersion) {
+      if (scripts.update(state, time, { displayCoords })) {
         dirty = true;
-        lastStateVersion = state.version;
+        staticCardReports.clear();
       }
       followCapturedTransitions();
       const linkChanges = links.refresh();
@@ -1055,20 +1086,27 @@ export async function startGame({
         }
       }
       syncSoundtrack();
-      const buildReport = (card) => ({
-        card,
-        report: renderer.buildDrawList(card.location, {
+      if (state.version !== lastStateVersion) {
+        dirty = true;
+        lastStateVersion = state.version;
+        staticCardReports.clear();
+      }
+      if (textureFailures.size) staticCardReports.clear();
+      const navigatingCard = motion.navigation?.card;
+      const buildReport = (card) =>
+        renderer.buildDrawList(card.location, {
           timeSeconds: time,
           graphicTimes,
           transitionLocations:
-            motion.navigation?.card === card.guid
+            navigatingCard === card.guid
               ? motion.navigation.plan.locations
               : undefined,
-          viewpoint:
-            motion.navigation?.card === card.guid ? viewpoint : undefined,
-        }),
-      });
-      let reports = cards().map(buildReport);
+          viewpoint: navigatingCard === card.guid ? viewpoint : undefined,
+        });
+      let reports = cards().map((card) => ({
+        card,
+        report: staticCardReports.get(card.guid) ?? buildReport(card),
+      }));
       let newClock = false;
       const active = new Set();
       for (const { report } of reports)
@@ -1086,7 +1124,11 @@ export async function startGame({
         }
       for (const guid of graphicTimes.keys())
         if (!active.has(guid)) graphicTimes.delete(guid);
-      if (newClock) reports = reports.map(({ card }) => buildReport(card));
+      if (newClock)
+        reports = reports.map(({ card }) => ({
+          card,
+          report: buildReport(card),
+        }));
       const hasAnimations = reports.some(({ report }) =>
         report.animations.some((a) => !a.complete),
       );
@@ -1118,7 +1160,14 @@ export async function startGame({
                 : true,
         });
       };
-      for (const { report } of reports) {
+      for (const { card, report } of reports) {
+        // 已完成的图形保持在终帧。镜头过渡和仍在播放的图形须重新采样。
+        if (
+          card.guid !== navigatingCard &&
+          report.animations.every((animation) => animation.complete)
+        )
+          staticCardReports.set(card.guid, report);
+        else staticCardReports.delete(card.guid);
         for (const animation of report.animations)
           record(animation.sceneLayerGUID, animation.complete);
         for (const item of report.unsupported) {
@@ -1295,6 +1344,7 @@ export async function startGame({
     disposed = true;
     texturePreparation = null;
     textureFailures.clear();
+    staticCardReports.clear();
     cardLayers.clear();
     cardLayerHost.remove();
     ui.startupProgress = [];

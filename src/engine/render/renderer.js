@@ -79,6 +79,8 @@ export class SceneRenderer {
     this.scriptGraphics = scriptGraphics;
     this.sequenceCache = new WeakMap();
     this.cardDrawings = new WeakMap();
+    this.surfacePool = [];
+    this.surfaceSize = 0;
     this.animation = new AnimationSampler(project, {
       sequenceFrames: (node) => this.sequenceFrames(node),
       scriptDurationMillis,
@@ -988,16 +990,29 @@ export class SceneRenderer {
   paintReport(ctx, report, rasterScale, images, failures) {
     const surfaceSize = Math.max(1, Math.ceil(CARD_SIZE * rasterScale));
     const surfaceScale = surfaceSize / CARD_SIZE;
-    const surface = () => {
-      const canvas =
-        typeof OffscreenCanvas === "function"
-          ? new OffscreenCanvas(surfaceSize, surfaceSize)
-          : ctx.canvas?.ownerDocument?.createElement("canvas");
+    const pool = this.surfacePool;
+    if (this.surfaceSize !== surfaceSize) {
+      pool.length = 0;
+      this.surfaceSize = surfaceSize;
+    }
+    const createSurface = () => {
+      if (typeof OffscreenCanvas === "function")
+        return new OffscreenCanvas(surfaceSize, surfaceSize);
+      const canvas = ctx.canvas?.ownerDocument?.createElement("canvas");
       if (!canvas) throw new Error("合成需要Canvas离屏画布");
       canvas.width = canvas.height = surfaceSize;
+      return canvas;
+    };
+    const withSurface = (draw) => {
+      const canvas = pool.pop() ?? createSurface();
       const context = canvas.getContext("2d");
+      context.clearRect(0, 0, surfaceSize, surfaceSize);
+      context.beginPath();
+      context.save();
       context.scale(surfaceScale, surfaceScale);
-      return [canvas, context];
+      draw(canvas, context);
+      context.restore();
+      pool.push(canvas);
     };
     const paint = (target, list) => {
       for (const item of list) {
@@ -1008,16 +1023,17 @@ export class SceneRenderer {
           const image = images.get(url);
           if (image) {
             if (item.haze?.[3]) {
-              const [canvas, layer] = surface();
-              layer.transform(...item.matrix);
-              layer.drawImage(
-                image,
-                ...this.atlas.crop(item.region),
-                ...item.dest,
-              );
-              layer.setTransform(surfaceScale, 0, 0, surfaceScale, 0, 0);
-              paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
-              target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+              withSurface((canvas, layer) => {
+                layer.transform(...item.matrix);
+                layer.drawImage(
+                  image,
+                  ...this.atlas.crop(item.region),
+                  ...item.dest,
+                );
+                layer.setTransform(surfaceScale, 0, 0, surfaceScale, 0, 0);
+                paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
+                target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+              });
             } else {
               target.transform(...item.matrix);
               target.drawImage(
@@ -1056,13 +1072,14 @@ export class SceneRenderer {
           target.fill();
         } else if (item.kind === "fill") {
           if (item.haze?.[3]) {
-            const [canvas, layer] = surface();
-            layer.transform(...item.matrix);
-            layer.fillStyle = item.color;
-            layer.fillRect(...item.dest);
-            layer.setTransform(surfaceScale, 0, 0, surfaceScale, 0, 0);
-            paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
-            target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+            withSurface((canvas, layer) => {
+              layer.transform(...item.matrix);
+              layer.fillStyle = item.color;
+              layer.fillRect(...item.dest);
+              layer.setTransform(surfaceScale, 0, 0, surfaceScale, 0, 0);
+              paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
+              target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+            });
           } else {
             target.transform(...item.matrix);
             target.fillStyle = item.color;
@@ -1070,35 +1087,39 @@ export class SceneRenderer {
           }
         } else if (item.kind === "shadow") {
           target.transform(...item.matrix);
-          const [canvas, layer] = surface();
-          paint(layer, item.caster);
-          if (item.fillWithBlack) {
-            layer.globalCompositeOperation = "source-in";
-            layer.fillStyle = "#000";
-            layer.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
-          }
-          if (item.receiver.length) {
-            const [mask, maskCtx] = surface();
-            paint(maskCtx, item.receiver);
-            layer.globalCompositeOperation = "destination-in";
-            layer.drawImage(mask, 0, 0, CARD_SIZE, CARD_SIZE);
-          }
-          paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
-          target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+          withSurface((canvas, layer) => {
+            paint(layer, item.caster);
+            if (item.fillWithBlack) {
+              layer.globalCompositeOperation = "source-in";
+              layer.fillStyle = "#000";
+              layer.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
+            }
+            if (item.receiver.length) {
+              withSurface((mask, maskCtx) => {
+                paint(maskCtx, item.receiver);
+                layer.globalCompositeOperation = "destination-in";
+                layer.drawImage(mask, 0, 0, CARD_SIZE, CARD_SIZE);
+              });
+            }
+            paintHaze(layer, item.haze, CARD_SIZE, CARD_SIZE);
+            target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+          });
         } else if (item.kind === "mask") {
           target.transform(...item.matrix);
-          const [mask, maskCtx] = surface();
-          paint(maskCtx, item.mask);
-          if (item.erase) {
-            target.globalCompositeOperation = "destination-out";
-            target.drawImage(mask, 0, 0, CARD_SIZE, CARD_SIZE);
-          } else {
-            const [canvas, layer] = surface();
-            paint(layer, item.children);
-            layer.globalCompositeOperation = "destination-in";
-            layer.drawImage(mask, 0, 0, CARD_SIZE, CARD_SIZE);
-            target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
-          }
+          withSurface((mask, maskCtx) => {
+            paint(maskCtx, item.mask);
+            if (item.erase) {
+              target.globalCompositeOperation = "destination-out";
+              target.drawImage(mask, 0, 0, CARD_SIZE, CARD_SIZE);
+            } else {
+              withSurface((canvas, layer) => {
+                paint(layer, item.children);
+                layer.globalCompositeOperation = "destination-in";
+                layer.drawImage(mask, 0, 0, CARD_SIZE, CARD_SIZE);
+                target.drawImage(canvas, 0, 0, CARD_SIZE, CARD_SIZE);
+              });
+            }
+          });
         }
         target.restore();
       }

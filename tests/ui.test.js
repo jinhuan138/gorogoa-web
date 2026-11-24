@@ -1113,6 +1113,7 @@ test("手机横屏居中棋盘保持正方形，触摸按屏幕偏移映射到�
       pointerType: "touch",
     }),
   );
+  await browser.step();
   const state = step.mock.instances.at(-1);
   expect(state.hovered.has(state.project.tree.attrs.staringCard)).toBe(true);
 });
@@ -1137,8 +1138,86 @@ test("手机竖向视口旋转横屏舞台后，非中心触摸仍映射到原�
       pointerType: "touch",
     }),
   );
+  await browser.step();
   const state = step.mock.instances.at(-1);
   expect(state.hovered.has(state.project.tree.attrs.staringCard)).toBe(true);
+});
+
+test("手机触摸拖卡每帧取最新坐标，复用未变化的卡片画布，并按松手位置落卡", async () => {
+  vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true });
+  const step = vi.spyOn(RuntimeState.prototype, "step");
+  const build = vi.spyOn(SceneRenderer.prototype, "buildDrawList");
+  const draw = vi.spyOn(SceneRenderer.prototype, "renderCardLayer");
+  await bootRuntime();
+  await browser.step(44);
+  await model.actions.loadChapter(1);
+  // 等棋盘上其它卡片的动画完成，测量只有卡片位置变化的帧。
+  await browser.step(36);
+  const state = step.mock.instances.at(-1);
+  const [guid] = [...state.coords].find(([, [col, row]]) => !col && !row);
+  const location = state.locations.get(guid);
+  const board = element("board");
+  board.setPointerCapture = vi.fn();
+  const bounds = vi
+    .spyOn(element("game"), "getBoundingClientRect")
+    .mockReturnValue({
+      left: 20,
+      top: 40,
+      width: BOARD_SIZE,
+      height: BOARD_SIZE,
+    });
+  const touch = (type, x, y) =>
+    board.dispatchEvent(
+      new PointerEvent(type, {
+        clientX: 20 + BOARD_SIZE - y,
+        clientY: 40 + x,
+        pointerId: 1,
+        isPrimary: true,
+        button: 0,
+        buttons: type === "pointerup" ? 0 : 1,
+        pointerType: "touch",
+        bubbles: true,
+      }),
+    );
+
+  touch("pointerdown", 183, 183);
+  touch("pointermove", 169, 175);
+  expect(board.setPointerCapture).toHaveBeenCalledWith(1);
+  await browser.step();
+  expect(state.coords.has(guid)).toBe(false);
+  const layer = draw.mock.calls.findLast(([, guid]) => guid === location)[0];
+  const transform = layer.style.transform;
+  bounds.mockClear();
+  build.mockClear();
+  draw.mockClear();
+  touch("pointermove", 152, 168);
+  touch("pointermove", 131, 160);
+  expect(bounds).not.toHaveBeenCalled();
+  expect(layer.style.transform).toBe(transform);
+  await browser.step();
+  expect(bounds).toHaveBeenCalledTimes(1);
+  const [left, top] = layer.style.transform
+    .slice("translate(".length, -1)
+    .split(",")
+    .map((value) => parseFloat(value));
+  expect(left).toBeCloseTo((100 * (131 - CARD_SIZE / 2)) / CARD_SIZE);
+  expect(top).toBeCloseTo((100 * (160 - CARD_SIZE / 2)) / CARD_SIZE);
+  expect(build.mock.calls.some(([guid]) => guid === location)).toBe(false);
+  expect(draw.mock.calls.some(([canvas]) => canvas === layer)).toBe(false);
+
+  touch("pointermove", 180, 185);
+  bounds.mockClear();
+  touch("pointerup", 192, 488);
+  expect(bounds).toHaveBeenCalledTimes(1);
+  await browser.step(1, 0.025);
+  expect(state.coords.has(guid)).toBe(false);
+  expect(build.mock.calls.some(([guid]) => guid === location)).toBe(false);
+  expect(draw.mock.calls.some(([canvas]) => canvas === layer)).toBe(false);
+
+  await browser.step(4);
+  expect(bounds).toHaveBeenCalledTimes(1);
+  expect(state.coords.get(guid)).toEqual([0, 1]);
+  expect(build.mock.calls.some(([guid]) => guid === location)).toBe(true);
 });
 
 test("启动页后台停帧，恢复保留 Logo 与淡入进度", async () => {
@@ -1393,6 +1472,7 @@ test("旋转、像素比变化与零尺寸保持棋盘比例，不影响触摸�
       pointerType: "touch",
     }),
   );
+  await browser.step();
   const state = step.mock.instances.at(-1);
   expect(state.hovered.has(state.project.tree.attrs.staringCard)).toBe(true);
   for (let i = 0; i < 120 && model.ui.hotspots.length === 0; i++)
@@ -1774,7 +1854,7 @@ test("改变目标清理未使用的预取，失败图集允许正式绘制重�
 });
 
 test.each([0.75, 1.5, 2])(
-  "遮罩、阴影与雾效合成画布按 %f 比例栅格化",
+  "遮罩、阴影与雾效复用按 %f 比例栅格化的合成画布",
   async (rasterScale) => {
     browser.captureDrawing();
     const renderer = new SceneRenderer({}, { textures: [] }, { entries: [] });
@@ -1816,14 +1896,18 @@ test.each([0.75, 1.5, 2])(
       ],
       missing: [],
     };
-    await renderer.render(
-      document.createElement("canvas").getContext("2d"),
-      "test",
-      { report, rasterScale },
-    );
+    const context = document.createElement("canvas").getContext("2d");
+    const paint = () =>
+      renderer.render(context, "test", { report, rasterScale });
+    await paint();
+    expect(browser.surfaces).toHaveLength(3);
+    await paint();
+    expect(browser.surfaces).toHaveLength(3);
+    expect(context.drawImage).toHaveBeenCalledTimes(report.drawn.length * 2);
     const pixels = Math.ceil(CARD_SIZE * rasterScale);
-    expect(browser.surfaces.length).toBeGreaterThan(6);
     for (const surface of browser.surfaces) {
+      for (const [source] of surface.context.drawImage.mock.calls)
+        expect(source).not.toBe(surface);
       expect(surface.width).toBe(pixels);
       expect(surface.height).toBe(pixels);
       expect(surface.context.scale).toHaveBeenCalledWith(
