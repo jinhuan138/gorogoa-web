@@ -4,19 +4,20 @@ on:
     branches:
       - main
   workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 concurrency:
   group: github-pages
   cancel-in-progress: false
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: read
+    env:
+      PAGES_ARTIFACT_NAME: github-pages-${{ github.run_attempt }}
+    outputs:
+      artifact_name: ${{ env.PAGES_ARTIFACT_NAME }}
+      artifact_id: ${{ steps.upload.outputs.artifact_id }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,8 +33,44 @@ jobs:
       - run: node tools/checks/check-prologue.mjs --chapter-menu
       - run: pnpm run build
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - id: upload
+        uses: actions/upload-pages-artifact@v3
         with:
+          name: ${{ env.PAGES_ARTIFACT_NAME }}
           path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Wait for Pages artifact
+        shell: bash
+        timeout-minutes: 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PAGES_ARTIFACT_NAME: ${{ needs.build.outputs.artifact_name }}
+          EXPECTED_ARTIFACT_ID: ${{ needs.build.outputs.artifact_id }}
+        run: |
+          endpoint="/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?name=${PAGES_ARTIFACT_NAME}"
+          for attempt in {1..12}; do
+            if artifact_id="$(gh api "$endpoint" --jq '.artifacts[] | select(.expired == false) | .id')" &&
+               [[ "$artifact_id" == "$EXPECTED_ARTIFACT_ID" ]]; then
+              echo "Pages artifact $artifact_id is available."
+              exit 0
+            fi
+            if (( attempt < 12 )); then
+              sleep 5
+            fi
+          done
+          echo "::error::Pages artifact $EXPECTED_ARTIFACT_ID did not become available."
+          exit 1
       - id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: ${{ needs.build.outputs.artifact_name }}
