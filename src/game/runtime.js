@@ -1,7 +1,7 @@
 import { GameMotion } from "./motion.js";
-import { AudioBank } from "../engine/audio/audio.js";
-import { SoundtrackDirector } from "../engine/audio/soundtrack.js";
-import { InterfaceSounds } from "../engine/audio/interface.js";
+import { createBoardPresentation } from "./boardPresentation.js";
+import { createBoardInput } from "./boardInput.js";
+import { createGameAudio } from "./gameAudio.js";
 import {
   planTransition,
   sampleTransition,
@@ -11,7 +11,6 @@ import { SAVE_KEY, readSave, writeSave } from "../engine/model/storage.js";
 import { resolveHoleContent } from "../engine/model/holes.js";
 import { LinkModel } from "../engine/model/links.js";
 import {
-  BOARD_INSET,
   BOARD_SIZE,
   CELLS,
   centerCard,
@@ -19,22 +18,13 @@ import {
   cardAt,
   currentStoryPhase,
   nextStoryPhase,
-  beginCardDrag,
-  cancelCardDrag,
-  planCardDrop,
   finishCardDrop,
 } from "../engine/model/board.js";
 import { loadChapterCheckpoint, loadProject } from "../engine/model/project.js";
-import {
-  SceneRenderer,
-  failedTextureUrls,
-  needsBoardBackdrop,
-  reportTextureUrls,
-} from "../engine/render/renderer.js";
+import { SceneRenderer, reportTextureUrls } from "../engine/render/renderer.js";
 import { RuntimeState } from "../engine/model/state.js";
 import { ProjectScripts } from "../engine/model/scripts.js";
-import { EndingScreen } from "./screens/ending.js";
-import { EndingCredits } from "./screens/credits.js";
+import { createEndingFlow } from "./screens/endingFlow.js";
 import { StartupScreen, STARTUP_SLIDES } from "./screens/startup.js";
 import { CARD_SIZE } from "../engine/render/camera.js";
 import {
@@ -54,30 +44,14 @@ export async function startGame({
 }) {
   markStartup("game-start");
   const canvas = document.getElementById("game");
-  const ctx = canvas.getContext("2d");
-  const boardFrame = document.createElement("canvas");
-  boardFrame.width = boardFrame.height = canvas.width;
-  const frameContext = boardFrame.getContext("2d");
   const board = document.getElementById("board");
-  const cardLayerHost = document.createElement("div");
-  cardLayerHost.className = "board-card-layers";
-  cardLayerHost.setAttribute("aria-hidden", "true");
-  cardLayerHost.style.setProperty(
-    "--card-layer-size",
-    `${(100 * CARD_SIZE) / BOARD_SIZE}%`,
-  );
-  canvas.after(cardLayerHost);
-  const cardLayers = new Map();
+  const boardPresentation = createBoardPresentation(canvas);
   const staticCardReports = new Map();
-  let backdropDrawing = null;
-  const rotatedMobileStage = window.matchMedia(
-    "(pointer: coarse) and (orientation: portrait)",
+  const endingFlow = createEndingFlow(
+    document.getElementById("ending"),
+    resources.loadCredits,
   );
-  const endingCanvas = document.getElementById("ending");
   const pauseButton = document.getElementById("pause");
-  const soundBank = new AudioBank({ baseUrl: document.baseURI });
-  const interfaceBank = new AudioBank({ baseUrl: document.baseURI });
-  const interfaceSounds = new InterfaceSounds(interfaceBank);
   let backgrounded = document.hidden;
   let pageHidden = false;
   let hiddenAt = backgrounded ? performance.now() : null;
@@ -96,37 +70,32 @@ export async function startGame({
   }
   let frameRequest = null;
   let frameRunning = false;
-  let uiSoundGeneration = 0;
-  let rasterScale = canvas.width / BOARD_SIZE;
-  let density = 0;
-  let resizePending = true;
   const listeners = [];
   const pageNow = () => (hiddenAt ?? performance.now()) - hiddenDuration;
   function listen(target, type, callback) {
     target.addEventListener(type, callback);
     listeners.push(() => target.removeEventListener(type, callback));
   }
-  actions.playUiSound = async (name) => {
-    if (settings.soundMuted || disposed || backgrounded) return;
-    const generation = uiSoundGeneration;
-    if (!soundDirector) {
-      if (!(globalThis.AudioContext || globalThis.webkitAudioContext)) return;
-      const snapshot = state;
-      await setSound(true);
-      if (state !== snapshot) return;
-    }
-    if (disposed || backgrounded || generation !== uiSoundGeneration) return;
-    return interfaceSounds.play(name);
-  };
-  actions.disposeInterfaceSounds = () =>
-    interfaceSounds
-      .dispose()
-      .catch((error) => console.warn("界面音频关闭失败", error));
+  const audio = createGameAudio({
+    ui,
+    settings,
+    preferences,
+    actions,
+    baseUrl: document.baseURI,
+    read: resources.read,
+    pageNow,
+    isBackgrounded: () => backgrounded,
+    isDisposed: () => disposed,
+    isBootReady: () => bootReady,
+    getProject: () => project,
+    getState: () => state,
+    getMove: () => motion.navigation,
+  });
   const startupButton = document.getElementById("startup");
   const gameShell = document.getElementById("game-shell");
   const startup = new StartupScreen(
     startupButton,
-    soundBank,
+    audio.soundBank,
     document.baseURI,
     () => t("gameName"),
     {
@@ -134,17 +103,10 @@ export async function startGame({
       isPaused: () => backgrounded || disposed,
       onProgress: (completed, total, failed) =>
         updateStartupProgress("loadingLogos", completed, total, failed),
-      resume: async () => {
-        await unlockBank(soundBank);
-        await syncAudioBank(
-          soundBank,
-          () => backgrounded || settings.soundMuted,
-        );
-      },
+      resume: audio.resumeStartup,
     },
   );
   let bootReady = false;
-  let soundDirector, audioFocus, lastCardsInPlay;
   const read = resources.read;
   const saveStorage = preferences.storage;
   let lastSavedVersion = -1;
@@ -155,44 +117,17 @@ export async function startGame({
   let waitingForBoardTextures = false;
   let texturePreparation = null;
   const textureFailures = new Map();
-  soundBank.setChannelVolume("music", settings.volumeMusic);
-  soundBank.setChannelVolume("effects", settings.volumeEffects);
-  for (const [channel, value] of [
-    ["music", settings.volumeMusic],
-    ["effects", settings.volumeEffects],
-  ]) {
-    interfaceBank.setChannelVolume(channel, value);
-    interfaceSounds.initializeSlider(channel, value);
-  }
-  actions.setVolume = (channel, volume) => {
-    soundBank.setChannelVolume(channel, volume);
-    interfaceBank.setChannelVolume(channel, volume);
-    if (!backgrounded && !disposed)
-      interfaceSounds.adjustVolume(channel, volume, pageNow() / 1000);
-  };
   let project,
     state,
     links,
     scripts,
     renderer,
-    manifest,
     epoch = pageNow(),
     dirty = true,
-    drag = null,
-    press = null,
-    tap = null,
-    pendingTouchMove = null,
     lastHotspotKey = "",
     lastStateVersion = -1;
   let blockedCards = new Set();
   let textureUrls = new Map();
-  let endingScreen,
-    endingStarted = null,
-    titleFadeStarted = null,
-    creditsPredicate,
-    creditsScreen,
-    creditsData;
-  let creditsRequested = false;
   const graphicTimes = new Map(),
     layerStatus = new Map();
   const directionAngle = {
@@ -227,8 +162,8 @@ export async function startGame({
           state.captors.get(lowerCard) === drop.draggedGUID &&
           state.captureSides.get(lowerCard) === "UNDER"
         )
-          audioFocus = drop.draggedGUID;
-        soundDirector?.playInterface("int_drop_card");
+          audio.focusCard(drop.draggedGUID);
+        audio.playInterface("int_drop_card");
       }
     },
     opening: ({ guid, cell }) => links.place(guid, cell),
@@ -246,11 +181,11 @@ export async function startGame({
     ui.paused ||
     (waitingForBoardTextures &&
       !(allowPreparedTextures && texturePreparation?.ready)) ||
-    Boolean(drag || motion.busy);
+    Boolean(boardInput.drag || motion.busy);
   const canMove = (guid) => !blockedCards.has(guid);
   function cards() {
     const front =
-      drag?.draggedGUID ||
+      boardInput.drag?.draggedGUID ||
       motion.flight?.drag.draggedGUID ||
       motion.closing?.guid;
     return [...state.inPlay]
@@ -268,6 +203,7 @@ export async function startGame({
       }));
   }
   function placement(card) {
+    const { drag } = boardInput;
     if (drag?.draggedGUID === card.guid) return drag.topLeft;
     return (
       motion.position(card.guid) ??
@@ -275,28 +211,9 @@ export async function startGame({
     );
   }
   function displayCoords(guid) {
-    return motion.displayCoords(guid, drag) ?? state.coords.get(guid);
-  }
-  function logicalPoint(event) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) / rect.width;
-    const y = (event.clientY - rect.top) / rect.height;
-    if (rotatedMobileStage.matches)
-      return [y * BOARD_SIZE, (1 - x) * BOARD_SIZE];
-    return [x * BOARD_SIZE, y * BOARD_SIZE];
-  }
-  function hitCard(point) {
-    return cards()
-      .reverse()
-      .find((card) => {
-        const [x, y] = placement(card);
-        return (
-          point[0] >= x &&
-          point[0] < x + CARD_SIZE &&
-          point[1] >= y &&
-          point[1] < y + CARD_SIZE
-        );
-      });
+    return (
+      motion.displayCoords(guid, boardInput.drag) ?? state.coords.get(guid)
+    );
   }
   function activeTransitions(card) {
     return state
@@ -378,7 +295,7 @@ export async function startGame({
       prefetchPlan(plan);
       state.targets.set(card.guid, transition.attrs.guid);
       staticCardReports.clear();
-      if (plan.durationSeconds > 0) audioFocus = card.guid;
+      if (plan.durationSeconds > 0) audio.focusCard(card.guid);
       motion.start(
         "navigation",
         {
@@ -414,201 +331,54 @@ export async function startGame({
       if (transition) state.setLocation(guid, transition.attrs.destLocation);
     }
   }
-  function setHover(event) {
-    if (!state || backgrounded || disposed) return;
-    const card = hitCard(logicalPoint(event)),
-      old = [...state.hovered].join(",");
-    state.hovered.clear();
-    if (card) state.hovered.add(card.guid);
-    if (old !== [...state.hovered].join(",")) {
-      dirty = true;
-      staticCardReports.clear();
-    }
-    updateBoardCursor();
-  }
   function setBoardTextureWait(waiting) {
     waitingForBoardTextures = waiting;
     updateGameClockPause();
   }
-  function updateBoardCursor() {
-    if (waitingForBoardTextures && !drag) return;
-    const hovered = [...state.hovered][0];
-    const waiting = motion.busy || (hovered && !canMove(hovered));
-    const canDrag = hovered && state.coords.has(hovered) && showGrid();
-    const cursor = drag
-      ? "move"
-      : waiting
-        ? "wait"
-        : canDrag
-          ? "move"
-          : "default";
-    if (board.dataset.cursor !== cursor) board.dataset.cursor = cursor;
-  }
-  listen(board, "pointerdown", (event) => {
-    if (!state || inputBusy(true) || !event.isPrimary || event.button !== 0)
-      return;
-    if (pendingTouchMove?.pointerId === event.pointerId)
-      pendingTouchMove = null;
-    setHover(event);
-    tap = event.target.closest(".hotspot")
-      ? null
-      : { id: event.pointerId, clientX: event.clientX, clientY: event.clientY };
-    if (state.storyPhase !== "CHAPTERS") return;
-    const point = logicalPoint(event),
-      card = hitCard(point);
-    if (!card?.coords || !canMove(card.guid)) return;
-    const origin = placement(card);
-    press = {
-      guid: card.guid,
-      id: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      origin,
-      offset: point.map((v, i) => v - origin[i]),
-    };
-  });
-  function updatePointerPosition(event) {
-    if (drag && event.pointerId === drag.id) {
-      drag.topLeft = logicalPoint(event).map((v, i) => v - drag.offset[i]);
+  const boardInput = createBoardInput({
+    canvas,
+    board,
+    listen,
+    getState: () => state,
+    getLinks: () => links,
+    cards,
+    placement,
+    showGrid,
+    inputBusy,
+    canMove,
+    isBackgrounded: () => backgrounded,
+    isDisposed: () => disposed,
+    isWaitingForTextures: () => waitingForBoardTextures,
+    isMotionBusy: () => motion.busy,
+    showHints: () => settings.showHints,
+    activeTransitions,
+    invalidate() {
       dirty = true;
-      updateBoardCursor();
-    } else setHover(event);
-  }
-  function flushTouchMove() {
-    const event = pendingTouchMove;
-    pendingTouchMove = null;
-    if (event) updatePointerPosition(event);
-  }
-  listen(board, "pointermove", (event) => {
-    if (!state || backgrounded || disposed || !event.isPrimary) return;
-    if (press && event.pointerId === press.id && !event.buttons && !drag)
-      press = null;
-    if (
-      press &&
-      event.pointerId === press.id &&
-      !drag &&
-      !inputBusy(true) &&
-      canMove(press.guid) &&
-      Math.hypot(event.clientX - press.clientX, event.clientY - press.clientY) >
-        7
-    ) {
-      drag = {
-        ...beginCardDrag(links, press.guid),
-        offset: press.offset,
-        topLeft: press.origin,
-        id: press.id,
-      };
-      if (drag.direction === "OVER") {
-        lastCardsInPlay.add(drag.draggedGUID);
-        audioFocus = drag.revealedGUID;
-      }
-      board.setPointerCapture(event.pointerId);
-      soundDirector?.playInterface("int_lift_card");
-      press = tap = null;
-    }
-    if (event.pointerType === "touch") pendingTouchMove = event;
-    else updatePointerPosition(event);
-  });
-  listen(board, "pointerleave", (event) => {
-    // 触摸抬起也会触发离开；保留最后触及的卡片，让下一帧处理原版入场条件。
-    if (state && !drag && event.pointerType !== "touch") {
-      press = tap = null;
-      state.hovered.clear();
       staticCardReports.clear();
+    },
+    markDirty() {
       dirty = true;
-      updateBoardCursor();
-    }
+    },
+    onReveal: audio.focusRevealedCard,
+    onLift: () => audio.playInterface("int_lift_card"),
+    playHint: audio.playHint,
+    onDrop: (drag, plan) => motion.start("flight", { drag, plan }, now()),
   });
-  function hintAt(point) {
-    if (!settings.showHints || inputBusy()) return;
-    const card = hitCard(point);
-    const snapshot = state;
-    const shouldPlay = () =>
-      state === snapshot && !inputBusy() && settings.showHints;
-    if (card && !canMove(card.guid)) {
-      interfaceSounds.play("nonInteractive", { shouldPlay });
-      return;
-    }
-    const candidates = card ? [card] : cards();
-    if (
-      candidates.some(
-        (candidate) =>
-          canMove(candidate.guid) &&
-          activeTransitions(candidate).some(
-            (transition) => transition.attrs.hotspotStyle === "REGION",
-          ),
-      )
-    )
-      interfaceSounds.play("ping", { shouldPlay });
-    // 原版 m_sfxPingEmpty 未绑定素材，没有 REGION 热点时保持无声。
-  }
-  listen(board, "pointerup", (event) => {
-    if (!event.isPrimary || event.button !== 0) return;
-    if (pendingTouchMove?.pointerId === event.pointerId) {
-      if (drag?.id === event.pointerId) pendingTouchMove = null;
-      else flushTouchMove();
-    }
-    const tapped = event.pointerId === tap?.id ? tap : null;
-    if (tapped) tap = null;
-    if (event.pointerId === press?.id) press = null;
-    if (event.pointerId !== drag?.id) {
-      if (
-        tapped &&
-        Math.hypot(
-          event.clientX - tapped.clientX,
-          event.clientY - tapped.clientY,
-        ) <= 7
-      )
-        hintAt(logicalPoint(event));
-      return;
-    }
-    const current = drag;
-    drag = null;
-    const topLeft = logicalPoint(event).map((v, i) => v - current.offset[i]);
-    const plan = planCardDrop(links, current, topLeft, canMove);
-    if (plan) motion.start("flight", { drag: current, plan }, now());
-    else cancelCardDrag(links, current);
-    dirty = true;
-  });
-  function abandonPointer(event) {
-    if (pendingTouchMove?.pointerId === event.pointerId)
-      pendingTouchMove = null;
-    if (event.pointerId === tap?.id) tap = null;
-    if (event.pointerId === press?.id) press = null;
-    if (event.pointerId !== drag?.id) return;
-    cancelCardDrag(links, drag);
-    drag = null;
-    dirty = true;
-  }
-  listen(board, "pointercancel", abandonPointer);
-  listen(board, "lostpointercapture", (event) => {
-    // 触摸的隐式捕获从子元素转交棋盘时，子元素的失去捕获事件也会冒泡。
-    if (event.target === board) abandonPointer(event);
-  });
-  function cancelPointer() {
-    const current = drag;
-    drag = press = tap = pendingTouchMove = null;
-    if (!current) return;
-    cancelCardDrag(links, current);
-    if (board.hasPointerCapture(current.id))
-      board.releasePointerCapture(current.id);
-    dirty = true;
-  }
+  const { cancelPointer, flushTouchMove, updateBoardCursor } = boardInput;
   function restart({ restoreSaved = false, checkpoint = null } = {}) {
     if (!project) return;
     texturePreparation = null;
     textureFailures.clear();
     setBoardTextureWait(false);
-    backdropDrawing = null;
-    soundDirector?.stop();
-    interfaceSounds.stop();
+    boardPresentation.invalidateBackdrop();
+    audio.stopForRestart();
     epoch = gameClockTime();
     graphicTimes.clear();
     staticCardReports.clear();
     layerStatus.clear();
     blockedCards.clear();
     motion.cancel();
-    drag = press = tap = pendingTouchMove = null;
+    boardInput.reset();
     scripts = new ProjectScripts(project);
     state = new RuntimeState(project, {
       scriptEvaluator: (definition, predicate) =>
@@ -644,15 +414,11 @@ export async function startGame({
     else preferences.removeSave();
     state.storyPhase = currentStoryPhase(state);
     ui.phase = state.storyPhase;
-    endingStarted = state.storyPhase === "ENDING" ? -1.6 : null;
-    titleFadeStarted = null;
-    endingCanvas.hidden = true;
-    creditsScreen?.reset();
+    endingFlow.reset(state.storyPhase);
     lastSavedVersion = -1;
     links = new LinkModel(project, state);
     links.refresh();
-    lastCardsInPlay = new Set(state.inPlay);
-    audioFocus = [...state.inPlay].at(-1);
+    audio.resetFocus();
     renderer.isSatisfied = (node) => state.isSatisfied(node);
     dirty = true;
     lastHotspotKey = null;
@@ -670,9 +436,9 @@ export async function startGame({
     ui.paused = open;
     updateGameClockPause();
     if (feedback) actions.playUiSound("menu");
-    updateAudioPause().catch((error) =>
-      console.warn("声音暂停状态更新失败", error),
-    );
+    audio
+      .updatePause()
+      .catch((error) => console.warn("声音暂停状态更新失败", error));
     updateButtons();
     pauseButton.focus();
   }
@@ -727,19 +493,6 @@ export async function startGame({
       showNotice(t("chapterError"));
     }
   };
-  function syncSoundtrack() {
-    for (const guid of state.inPlay)
-      if (!lastCardsInPlay.has(guid)) audioFocus = guid;
-    lastCardsInPlay = new Set(state.inPlay);
-    if (audioFocus && !state.inPlay.has(audioFocus)) audioFocus = undefined;
-    const move = motion.navigation;
-    const moving = move?.card === audioFocus && move?.plan.durationSeconds > 0;
-    soundDirector?.syncLocation(
-      moving ? move.destination : state.locations.get(audioFocus),
-      moving ? move.plan.durationSeconds : audioFocus ? 0.01 : 1,
-    );
-    soundDirector?.syncScore(state, move);
-  }
   function advanceStory(time) {
     const phase = nextStoryPhase(state, state.storyPhase);
     if (phase === state.storyPhase || (phase !== "ENDING" && inputBusy()))
@@ -747,7 +500,8 @@ export async function startGame({
     state.storyPhase = phase;
     state.version++;
     dirty = true;
-    if (phase === "ENDING") endingStarted = motion.navigation?.started ?? time;
+    if (phase === "ENDING")
+      endingFlow.start(motion.navigation?.started ?? time);
     if (phase === "CHAPTERS") {
       const guid = project.tree.attrs.staringCard,
         cell = state.coords.get(guid);
@@ -764,81 +518,6 @@ export async function startGame({
       }
     }
   }
-  function paintEnding(time) {
-    if (state.storyPhase !== "EPILOGUE" && state.storyPhase !== "ENDING")
-      return;
-    if (!creditsRequested) {
-      creditsRequested = true;
-      resources
-        .loadCredits()
-        .then((data) => {
-          creditsData = data;
-        })
-        .catch((error) => console.warn("片尾名单载入失败", error));
-    }
-    if (endingScreen === undefined) {
-      endingScreen = null;
-      try {
-        const screen = new EndingScreen(
-          endingCanvas,
-          manifest,
-          project,
-          document.baseURI,
-        );
-        if (screen.gl) {
-          endingScreen = screen;
-          screen.ready.catch((error) => {
-            endingScreen = null;
-            console.warn("结局画面载入失败", error);
-          });
-        }
-      } catch (error) {
-        console.warn("结局画面暂不可用", error);
-      }
-    }
-    if (endingStarted === null) return;
-    if (
-      titleFadeStarted === null &&
-      creditsPredicate &&
-      state.isSatisfied(creditsPredicate) === true
-    )
-      titleFadeStarted = time;
-    const fade =
-      titleFadeStarted === null
-        ? 1
-        : Math.max(0, 1 - (time - titleFadeStarted) / 0.5);
-    endingCanvas.hidden = !endingScreen?.loaded;
-    endingScreen?.draw(time - endingStarted, fade);
-    if (titleFadeStarted !== null && creditsData && !creditsScreen.data)
-      creditsScreen.start(creditsData, titleFadeStarted);
-    creditsScreen.update(time);
-  }
-  function paintGrid(ctx, progress, scale = 1, alpha = 1) {
-    const lo = BOARD_INSET,
-      hi = lo + 2 * CARD_SIZE,
-      mid = lo + CARD_SIZE;
-    ctx.save();
-    if (scale !== 1) {
-      ctx.translate(mid, mid);
-      ctx.scale(scale, scale);
-      ctx.translate(-mid, -mid);
-    }
-    ctx.globalAlpha = progress * alpha;
-    ctx.fillStyle = "#f2f2f0";
-    ctx.fillRect(lo, lo, hi - lo, hi - lo);
-    ctx.strokeStyle = "#c8c8c8";
-    ctx.strokeRect(lo + 0.5, lo + 0.5, hi - lo - 1, hi - lo - 1);
-    ctx.globalAlpha = alpha;
-    const fraction = (start) =>
-      Math.max(0, Math.min(1, (progress - start) / (1 - start)));
-    ctx.beginPath();
-    ctx.moveTo(hi, mid + 0.5);
-    ctx.lineTo(hi - (hi - lo) * fraction(0.375), mid + 0.5);
-    ctx.moveTo(mid + 0.5, lo);
-    ctx.lineTo(mid + 0.5, lo + (hi - lo) * fraction(0.125));
-    ctx.stroke();
-    ctx.restore();
-  }
   function scheduleFrame() {
     if (
       disposed ||
@@ -849,144 +528,6 @@ export async function startGame({
     )
       return;
     frameRequest = requestAnimationFrame(frame);
-  }
-  function resizeBoard() {
-    const nextDensity = Math.min(globalThis.devicePixelRatio || 1, 2);
-    if (!resizePending && density === nextDensity) return;
-    density = nextDensity;
-    resizePending = false;
-    const { width, height } = canvas.getBoundingClientRect();
-    if (!width || !height) return;
-    const pixels = Math.min(
-      BOARD_SIZE * 2,
-      Math.max(1, Math.round(Math.min(width, height) * density)),
-    );
-    if (boardFrame.width === pixels) return;
-    boardFrame.width = boardFrame.height = pixels;
-    rasterScale = pixels / BOARD_SIZE;
-    dirty = true;
-  }
-  function positionCardLayer(layer, [x, y]) {
-    if (layer.x === x && layer.y === y) return;
-    layer.canvas.style.transform = `translate(${(100 * x) / CARD_SIZE}%, ${(100 * y) / CARD_SIZE}%)`;
-    layer.x = x;
-    layer.y = y;
-  }
-  async function paintCardLayers(entries) {
-    const paints = [];
-    const layers = entries.map(({ card, report, position }) => {
-      let layer = cardLayers.get(card.guid);
-      if (!layer) {
-        const canvas = document.createElement("canvas");
-        canvas.className = "board-card-layer";
-        layer = { canvas };
-      }
-      if (layer.report !== report || layer.rasterScale !== rasterScale) {
-        const paint = renderer.renderCardLayer(
-          layer.canvas,
-          card.location,
-          report,
-          rasterScale,
-          textureFailures,
-        );
-        if (paint) paints.push(paint);
-      }
-      return { guid: card.guid, position, layer, report };
-    });
-    if (paints.length) await Promise.all(paints);
-    return layers;
-  }
-  function presentCardLayers(layers) {
-    const visible = new Set(layers.map(({ guid }) => guid));
-    for (const [guid, layer] of cardLayers) {
-      if (visible.has(guid)) continue;
-      layer.canvas.remove();
-      cardLayers.delete(guid);
-    }
-    for (const [order, { guid, position, layer, report }] of layers.entries()) {
-      layer.report = textureFailures.size ? null : report;
-      layer.rasterScale = rasterScale;
-      if (!cardLayers.has(guid)) {
-        cardLayers.set(guid, layer);
-        cardLayerHost.append(layer.canvas);
-      }
-      positionCardLayer(layer, position);
-      if (layer.order !== order) {
-        layer.canvas.style.zIndex = order;
-        layer.order = order;
-      }
-    }
-  }
-  async function presentBoard(entries, frameState) {
-    if (disposed || backgrounded || ui.paused || state !== frameState)
-      return false;
-    const layered = state.storyPhase === "CHAPTERS" && !ui.loading;
-    // 擦除必须作用于网格和下方卡片。其上方的卡片仍可独立显示。
-    const backdropCount = layered
-      ? entries.findLastIndex(({ report }) => needsBoardBackdrop(report)) + 1
-      : entries.length;
-    const backdrop = entries.slice(0, backdropCount);
-    const grid = showGrid()
-      ? [
-          motion.opening?.sample.progress ?? 1,
-          motion.closing?.sample.scale,
-          motion.closing?.sample.alpha,
-        ]
-      : null;
-    const drawing = layered
-      ? JSON.stringify([
-          rasterScale,
-          grid,
-          backdrop.map(({ report, position }) => [position, report.drawn]),
-          failedTextureUrls(
-            backdrop.map(({ report }) => report),
-            textureFailures,
-          ),
-        ])
-      : null;
-    const repaint = drawing === null || drawing !== backdropDrawing;
-    if (repaint) {
-      frameContext.setTransform(1, 0, 0, 1, 0, 0);
-      frameContext.clearRect(0, 0, boardFrame.width, boardFrame.height);
-      frameContext.scale(rasterScale, rasterScale);
-      if (grid) paintGrid(frameContext, ...grid);
-      for (const {
-        card,
-        report,
-        position: [x, y],
-      } of backdrop) {
-        frameContext.save();
-        frameContext.translate(x, y);
-        frameContext.fillStyle = "#f2f2f0";
-        frameContext.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
-        try {
-          await renderer.render(frameContext, card.location, {
-            rasterScale,
-            report,
-            textureFailures,
-          });
-        } finally {
-          frameContext.restore();
-        }
-      }
-    }
-    if (disposed || backgrounded || ui.paused || state !== frameState)
-      return false;
-    const layers = await paintCardLayers(entries.slice(backdropCount));
-    if (disposed || backgrounded || ui.paused || state !== frameState)
-      return false;
-    presentCardLayers(layers);
-    if (repaint) {
-      if (
-        canvas.width !== boardFrame.width ||
-        canvas.height !== boardFrame.height
-      )
-        canvas.width = canvas.height = boardFrame.width;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(boardFrame, 0, 0);
-      backdropDrawing = drawing;
-    }
-    return true;
   }
   async function prepareBoardTextures(urls) {
     const preparation = { ready: false };
@@ -1022,7 +563,7 @@ export async function startGame({
     if (disposed || backgrounded) return;
     frameRunning = true;
     try {
-      resizeBoard();
+      if (boardPresentation.resize()) dirty = true;
       flushTouchMove();
       await drawFrame();
     } finally {
@@ -1040,7 +581,7 @@ export async function startGame({
       if (!startup.active) {
         epoch = pageNow();
         ui.startupActive = false;
-        if (startup.audioRequested && !settings.soundMuted) setSound(true);
+        if (startup.audioRequested && !settings.soundMuted) audio.enable();
       } else if (!bootReady || !startup.showingLast) {
         return;
       }
@@ -1048,14 +589,9 @@ export async function startGame({
     if (!bootReady) return;
     if (ui.paused) return;
     if (texturePreparation && !texturePreparation.ready) {
-      const draggedLayer = cardLayers.get(drag?.draggedGUID);
-      if (draggedLayer) {
-        positionCardLayer(draggedLayer, drag.topLeft);
-        if (draggedLayer.order !== cardLayers.size) {
-          draggedLayer.canvas.style.zIndex = cardLayers.size;
-          draggedLayer.order = cardLayers.size;
-        }
-      }
+      const { drag } = boardInput;
+      if (drag)
+        boardPresentation.moveDraggedCard(drag.draggedGUID, drag.topLeft);
       return;
     }
     try {
@@ -1085,7 +621,7 @@ export async function startGame({
           }
         }
       }
-      syncSoundtrack();
+      audio.syncSoundtrack();
       if (state.version !== lastStateVersion) {
         dirty = true;
         lastStateVersion = state.version;
@@ -1114,11 +650,7 @@ export async function startGame({
           active.add(animation.guid);
           if (!graphicTimes.has(animation.guid)) {
             graphicTimes.set(animation.guid, time);
-            soundDirector?.playGraphic(
-              project.get(animation.guid),
-              state,
-              motion.navigation,
-            );
+            audio.playGraphic(animation.guid);
             newClock = true;
           }
         }
@@ -1239,7 +771,23 @@ export async function startGame({
           report,
           position: placement(card),
         }));
-        if (!(await presentBoard(entries, frameState))) {
+        const grid = showGrid()
+          ? [
+              motion.opening?.sample.progress ?? 1,
+              motion.closing?.sample.scale,
+              motion.closing?.sample.alpha,
+            ]
+          : null;
+        if (
+          !(await boardPresentation.present(entries, {
+            renderer,
+            textureFailures,
+            layered: frameState.storyPhase === "CHAPTERS" && !ui.loading,
+            grid,
+            canPresent: () =>
+              !disposed && !backgrounded && !ui.paused && state === frameState,
+          }))
+        ) {
           dirty = true;
           return;
         }
@@ -1255,7 +803,7 @@ export async function startGame({
         .map((card) => card.location)
         .join("|");
       canvas.dataset.phase = state.storyPhase;
-      paintEnding(time);
+      endingFlow.update(time, state);
       ui.phase = state.storyPhase;
       updateBoardCursor();
       updateButtons();
@@ -1277,48 +825,30 @@ export async function startGame({
       ui.loading = false;
     }
   }
-  listen(startupButton, "click", () => {
-    if (backgrounded || disposed) return;
-    if (
-      !settings.soundMuted &&
-      (globalThis.AudioContext || globalThis.webkitAudioContext)
-    ) {
-      unlockBank(interfaceBank).catch((error) =>
-        console.warn("界面声音暂未解锁", error),
-      );
-      startup.enableMusic();
-    }
-  });
-  listen(board, "pointerdown", () => {
-    if (
-      !backgrounded &&
-      !disposed &&
-      !settings.soundMuted &&
-      !soundDirector &&
-      (globalThis.AudioContext || globalThis.webkitAudioContext)
-    )
-      setSound(true);
-  });
+  listen(startupButton, "click", () =>
+    audio.enableStartupAudio(() => startup.enableMusic()),
+  );
+  listen(board, "pointerdown", audio.enableBoardAudio);
   function setBackground(hidden) {
     if (disposed || hidden === backgrounded) return;
     backgrounded = hidden;
     if (hidden) {
       hiddenAt = performance.now();
-      uiSoundGeneration++;
+      audio.enterBackground();
       cancelPointer();
-      interfaceSounds.stop();
+      audio.stopInterface();
       if (frameRequest !== null) cancelAnimationFrame(frameRequest);
       frameRequest = null;
     } else {
       hiddenDuration += performance.now() - hiddenAt;
       hiddenAt = null;
-      resizePending = true;
+      boardPresentation.requestResize();
       dirty = true;
       scheduleFrame();
     }
-    updateAudioPause().catch((error) =>
-      console.warn("后台音频状态更新失败", error),
-    );
+    audio
+      .updatePause()
+      .catch((error) => console.warn("后台音频状态更新失败", error));
   }
   listen(document, "visibilitychange", () =>
     setBackground(document.hidden || pageHidden),
@@ -1332,7 +862,7 @@ export async function startGame({
     setBackground(document.hidden);
   });
   const onResize = () => {
-    resizePending = true;
+    boardPresentation.requestResize();
     dirty = true;
     scheduleFrame();
   };
@@ -1345,8 +875,7 @@ export async function startGame({
     texturePreparation = null;
     textureFailures.clear();
     staticCardReports.clear();
-    cardLayers.clear();
-    cardLayerHost.remove();
+    boardPresentation.dispose();
     ui.startupProgress = [];
     cancelPointer();
     if (frameRequest !== null) cancelAnimationFrame(frameRequest);
@@ -1355,13 +884,8 @@ export async function startGame({
     resizeObserver.disconnect();
     startup.finish();
     motion.cancel();
-    creditsScreen?.reset();
-    soundDirector?.stop();
-    soundBank.stopAll();
-    actions.disposeInterfaceSounds();
-    soundBank.context
-      ?.close()
-      .catch((error) => console.warn("游戏音频关闭失败", error));
+    endingFlow.dispose();
+    audio.dispose();
   };
   scheduleFrame();
   try {
@@ -1385,10 +909,9 @@ export async function startGame({
     if (disposed) return;
     markStartup("data-loaded");
     project = loaded;
-    manifest = loadedManifest;
-    textureUrls = createTextureUrls(manifest, document.baseURI);
+    textureUrls = createTextureUrls(loadedManifest, document.baseURI);
     ui.textures = textureUrls;
-    renderer = new SceneRenderer(project, manifest, atlases, {
+    renderer = new SceneRenderer(project, loadedManifest, atlases, {
       baseUrl: document.baseURI,
       holeContent: (node) => resolveHoleContent(project, state, node),
       scriptGraphics: (graphic, matrix, options) =>
@@ -1434,16 +957,12 @@ export async function startGame({
         predicate: project.container(definition, "predicate")[0],
       }));
     const credits = milestones.find((node) => node.attrs.id === "credits");
-    creditsPredicate = project.container(credits, "predicate")[0];
-    creditsScreen = new EndingCredits(
-      ...["credits", "credits-page", "credits-prev", "credits-next"].map((id) =>
-        document.getElementById(id),
-      ),
-      {
-        previous: textureUrl("credits_back"),
-        next: textureUrl("credits_forward"),
-      },
-    );
+    endingFlow.configure({
+      project,
+      manifest: loadedManifest,
+      predicate: project.container(credits, "predicate")[0],
+      textureUrl,
+    });
     bootReady = true;
     ui.ready = true;
   } catch (error) {
@@ -1453,84 +972,4 @@ export async function startGame({
     console.error(error);
     showNotice(t("loadError"));
   }
-
-  // 用户手势启用原版声音，同时核对实际浏览器解码结果；不把容器识别当作可播放。
-
-  async function unlockBank(bank) {
-    await bank.resume();
-    if (disposed) {
-      if (bank.context.state !== "closed") await bank.context.close();
-    } else if (backgrounded) await bank.context.suspend();
-  }
-  async function syncAudioBank(bank, shouldPause, director) {
-    if (!bank.context || bank.context.state === "closed" || disposed) return;
-    let pause;
-    do {
-      pause = shouldPause();
-      if (pause) {
-        if (director) await director.suspend();
-        else await bank.context.suspend();
-      } else if (bank.context.state !== "running") {
-        await bank.resume();
-        if (disposed && bank.context.state !== "closed")
-          await bank.context.close();
-      }
-    } while (
-      !disposed &&
-      bank.context.state !== "closed" &&
-      pause !== shouldPause()
-    );
-  }
-  async function updateAudioPause() {
-    await Promise.all([
-      syncAudioBank(
-        soundBank,
-        () => backgrounded || settings.soundMuted || ui.paused,
-        soundDirector,
-      ),
-      syncAudioBank(interfaceBank, () => backgrounded || settings.soundMuted),
-    ]);
-    if (
-      soundDirector &&
-      !disposed &&
-      !backgrounded &&
-      !settings.soundMuted &&
-      !ui.paused
-    )
-      syncSoundtrack();
-  }
-
-  async function setSound(enabled, remember = false) {
-    if (!bootReady || ui.soundBusy || interfaceSounds.disposed) return;
-    ui.soundBusy = true;
-    const previousMuted = settings.soundMuted;
-    try {
-      if (enabled) {
-        // 两个上下文都在用户手势内发起解锁，必须早于任何网络请求。
-        await Promise.all([unlockBank(soundBank), unlockBank(interfaceBank)]);
-        if (interfaceSounds.disposed) return;
-        if (!soundDirector) {
-          const { events } = await read("assets/audio/events.json");
-          if (interfaceSounds.disposed) return;
-          soundDirector = new SoundtrackDirector(project, events, soundBank);
-        }
-      }
-      settings.soundMuted = !enabled;
-      interfaceSounds.setEnabled(enabled);
-      await updateAudioPause();
-      if (interfaceSounds.disposed) return;
-      if (remember) preferences.rememberSound();
-      ui.soundLabel =
-        soundDirector && !settings.soundMuted ? "soundOff" : "soundOn";
-    } catch (error) {
-      settings.soundMuted = previousMuted;
-      interfaceSounds.setEnabled(!previousMuted && Boolean(soundDirector));
-      ui.soundLabel = "retrySound";
-      console.warn("声音暂未就绪", error);
-    } finally {
-      ui.soundBusy = false;
-    }
-  }
-  actions.toggleSound = () =>
-    setSound(!soundDirector || settings.soundMuted, true);
 }
