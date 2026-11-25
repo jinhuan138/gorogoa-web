@@ -1741,8 +1741,8 @@
     {
       "key": "resources-assets/16",
       "name": "card012.3",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -1752,8 +1752,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-16-card012.3.webp",
-      "sha256": "d91b0a327e5d24142c3377d6200eea6b32d170f2c93638e0b67c2c19d89ef62f",
+      "url": "assets/textures/resources-assets-16-card012.3-75.webp",
+      "sha256": "b979f8909a2c032ff13184278a7603498f6b1b1d9da43f5abc528d37092ea935",
       "resourcePath": "packed/final/card012.3"
     },
     {
@@ -2281,8 +2281,8 @@
     {
       "key": "resources-assets/46",
       "name": "card012.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2292,8 +2292,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-46-card012.2.webp",
-      "sha256": "010438faed137de80a0a57b9e29da7d655811e9bc7e29e5720286d50f24ed01e",
+      "url": "assets/textures/resources-assets-46-card012.2-75.webp",
+      "sha256": "9c33e494928474735cf210b26660a32817bba20dc2b57f31f0c26a92b8606545",
       "resourcePath": "packed/final/card012.2"
     },
     {
@@ -2479,8 +2479,8 @@
     {
       "key": "resources-assets/57",
       "name": "card012.5",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2490,8 +2490,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-57-card012.5.webp",
-      "sha256": "7ede0f62ff264dd90bfc1be15da2c382643c9b421bf1c652760cc74da2714941",
+      "url": "assets/textures/resources-assets-57-card012.5-75.webp",
+      "sha256": "339e02f663067438cd1e45116b4e308c6d60d7dd371a6211d43086ef2961569c",
       "resourcePath": "packed/final/card012.5"
     },
     {
@@ -2785,8 +2785,8 @@
     {
       "key": "resources-assets/74",
       "name": "card010.7",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2796,8 +2796,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-74-card010.7.webp",
-      "sha256": "9752ac83125bbc20fce2b4f11184298416a386f9ee881146352f1c775d48c21a",
+      "url": "assets/textures/resources-assets-74-card010.7-75.webp",
+      "sha256": "6785e7904e74250ca6fbdb11beaf3578a513d2b99e3b0969c76108b75c31eeb3",
       "resourcePath": "packed/final/card010.7"
     },
     {
@@ -2821,8 +2821,8 @@
     {
       "key": "resources-assets/76",
       "name": "card013e.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2832,8 +2832,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-76-card013e.0.webp",
-      "sha256": "11be7c837d37b3488444e20bac91ca1eaee90c05dfe0876397b25d3406314dba",
+      "url": "assets/textures/resources-assets-76-card013e.0-75.webp",
+      "sha256": "b788f0d10d5cb6f22f94d75010b0361d50c40d351949de2de61f1e8338d921d4",
       "resourcePath": "packed/final/card013e.0"
     },
     {
@@ -2857,8 +2857,8 @@
     {
       "key": "resources-assets/78",
       "name": "card012.6",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2868,15 +2868,15 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-78-card012.6.webp",
-      "sha256": "8ecf700de51276670851cb4675cb63d1d5b182e41e04acd2ac9957ab2c7dbd95",
+      "url": "assets/textures/resources-assets-78-card012.6-75.webp",
+      "sha256": "678e540137555bd6756e37fe6519c28d57f9d28704551fc07b618e6e8a7294a1",
       "resourcePath": "packed/final/card012.6"
     },
     {
       "key": "resources-assets/79",
       "name": "card010.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2886,8 +2886,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-79-card010.0.webp",
-      "sha256": "d4617a68d48a6698ae750e3e74fdafd145b1334d66c95b4f9124d8abf1b6531f",
+      "url": "assets/textures/resources-assets-79-card010.0-75.webp",
+      "sha256": "b21fa0f5bbbfe127a7776e952f078c576e0fbebd2faa7eb34137c6c396d131ad",
       "resourcePath": "packed/final/card010.0"
     },
     {
@@ -2947,8 +2947,8 @@
     {
       "key": "resources-assets/83",
       "name": "card010.9",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -2958,8 +2958,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-83-card010.9.webp",
-      "sha256": "f99adf178f46f5bac89786b24f23be938e874c3d60037ad0eea6309c983d1888",
+      "url": "assets/textures/resources-assets-83-card010.9-75.webp",
+      "sha256": "3ae5b655716dae4fad54e92e723e7b5ddcf1828e8ff77f55bb092b4b126c0336",
       "resourcePath": "packed/final/card010.9"
     },
     {
@@ -3019,8 +3019,8 @@
     {
       "key": "resources-assets/87",
       "name": "card010.8",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -3030,8 +3030,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-87-card010.8.webp",
-      "sha256": "ddf56446f4993a522b0eec0d5d590e775fc189202bc228fa3faf65452d8f4bd5",
+      "url": "assets/textures/resources-assets-87-card010.8-75.webp",
+      "sha256": "cdfce0daf2747084143b4dac048400f3cc82c8ceab20bfb2c58098367f74a196",
       "resourcePath": "packed/final/card010.8"
     },
     {
@@ -3055,8 +3055,8 @@
     {
       "key": "resources-assets/89",
       "name": "card011.3",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -3066,8 +3066,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-89-card011.3.webp",
-      "sha256": "474a8872eaa694d77ae76b4f489c4f50f3eca8dc324797b161f4010db64de5af",
+      "url": "assets/textures/resources-assets-89-card011.3-75.webp",
+      "sha256": "b9f9028ad99657b7a2034e45ddeaffed022ae69d3a14e9e3c7b4b916205a61fd",
       "resourcePath": "packed/final/card011.3"
     },
     {
@@ -3289,8 +3289,8 @@
     {
       "key": "resources-assets/102",
       "name": "card002.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -3300,8 +3300,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-102-card002.0.webp",
-      "sha256": "a17bb39e8cc0742b5e65d2880a6a8c7238196200afd84c88dbbab3906294358a",
+      "url": "assets/textures/resources-assets-102-card002.0-75.webp",
+      "sha256": "41ccf675f5c37e478b3979dc6b0573caf1afb846e1409ae89a72b9563703a856",
       "resourcePath": "packed/final/card002.0"
     },
     {
@@ -3415,8 +3415,8 @@
     {
       "key": "resources-assets/109",
       "name": "card001c.3",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -3426,8 +3426,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-109-card001c.3.webp",
-      "sha256": "458474b7135145428187eb9cc3917865c4f13c525eae7540f6f5a8afb529a623",
+      "url": "assets/textures/resources-assets-109-card001c.3-75.webp",
+      "sha256": "59f640250a840bc94c88143037ff2156e5cb3e913bdc9901752a160e5cf15959",
       "resourcePath": "packed/final/card001c.3"
     },
     {
@@ -3829,8 +3829,8 @@
     {
       "key": "resources-assets/132",
       "name": "card006.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -3840,8 +3840,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-132-card006.0.webp",
-      "sha256": "e27eeab614984fa4f454924d3e99c624dde59fb0d5d10ab5c7fa8c5cf98b3800",
+      "url": "assets/textures/resources-assets-132-card006.0-75.webp",
+      "sha256": "c7054fe3354f01254ff0214c1da8ea177f911e01b88dcf6a4494b6dfe029b014",
       "resourcePath": "packed/final/card006.0"
     },
     {
@@ -5053,8 +5053,8 @@
     {
       "key": "resources-assets/200",
       "name": "card010.11",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -5064,8 +5064,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-200-card010.11.webp",
-      "sha256": "edd687bdfab426fd123f779505e10086bfe1a91644711e3013ea78dd8632699a",
+      "url": "assets/textures/resources-assets-200-card010.11-75.webp",
+      "sha256": "f0bd7785a6f96d66282da71c9d193ab8d5971034fdd861a9c2a3eade2f467248",
       "resourcePath": "packed/final/card010.11"
     },
     {
@@ -5683,8 +5683,8 @@
     {
       "key": "resources-assets/235",
       "name": "card012.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -5694,8 +5694,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-235-card012.0.webp",
-      "sha256": "540569eae13f681f2a7a90a7e639e35e1d6568eecc4dcd1f7fe1a37e1d702081",
+      "url": "assets/textures/resources-assets-235-card012.0-75.webp",
+      "sha256": "367d6b4eab6978f517538cd683a0e17879bfe755ae2191d0edc3c4dcfec0ddc7",
       "resourcePath": "packed/final/card012.0"
     },
     {
@@ -5809,8 +5809,8 @@
     {
       "key": "resources-assets/242",
       "name": "card001c.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -5820,8 +5820,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-242-card001c.1.webp",
-      "sha256": "173af45d51a3c465b7b9ae68640d6b9837ad38c4898ce50290ad572ae14ec5b4",
+      "url": "assets/textures/resources-assets-242-card001c.1-75.webp",
+      "sha256": "c4d978177e76d52d524299955b59446becc3c1f045352288b624c1b02f047bfd",
       "resourcePath": "packed/final/card001c.1"
     },
     {
@@ -6493,8 +6493,8 @@
     {
       "key": "resources-assets/280",
       "name": "card012.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -6504,8 +6504,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-280-card012.1.webp",
-      "sha256": "54d1b37e3951317703a924aef6ae18f10d9f3d300cb6daa2eca26954cd89208d",
+      "url": "assets/textures/resources-assets-280-card012.1-75.webp",
+      "sha256": "a6e623060f2dbef9289c9adfff9e70fae82a7a67be63d070e039a904b3016a6b",
       "resourcePath": "packed/final/card012.1"
     },
     {
@@ -7357,8 +7357,8 @@
     {
       "key": "resources-assets/328",
       "name": "card011.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -7368,8 +7368,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-328-card011.0.webp",
-      "sha256": "3ffacd2bb5e0d95cb23ec672724d0276184a2f5de4612d244461b9147fee0fec",
+      "url": "assets/textures/resources-assets-328-card011.0-75.webp",
+      "sha256": "2c8e8f46bb426eb5cc8b5c56dc9f6fe3f4c9aa2c62f746bb7b5f64bb2a40ea35",
       "resourcePath": "packed/final/card011.0"
     },
     {
@@ -7501,8 +7501,8 @@
     {
       "key": "resources-assets/336",
       "name": "card012.7",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -7512,8 +7512,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-336-card012.7.webp",
-      "sha256": "378c21cb7b82af09e2bdfc15f17b5ca0f8577fafea1728b55483283d4540bc70",
+      "url": "assets/textures/resources-assets-336-card012.7-75.webp",
+      "sha256": "9501b73a5475971e3c3c368a68ed9d2e4d15ea0350ffbd2d141db62a7b399792",
       "resourcePath": "packed/final/card012.7"
     },
     {
@@ -7573,8 +7573,8 @@
     {
       "key": "resources-assets/340",
       "name": "card001c.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -7584,8 +7584,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-340-card001c.2.webp",
-      "sha256": "2c2aa34366f6d3d0438dea792ea78aea7a56c4ff1d156f7082e3a4ea6bbbec40",
+      "url": "assets/textures/resources-assets-340-card001c.2-75.webp",
+      "sha256": "6e45269dc2a7bf1abe1becd924dfdaba6e700e362222a9b13a3fe4dc0c184b05",
       "resourcePath": "packed/final/card001c.2"
     },
     {
@@ -7699,8 +7699,8 @@
     {
       "key": "resources-assets/347",
       "name": "card004.3",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -7710,8 +7710,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-347-card004.3.webp",
-      "sha256": "c5932d013ef26d4958d71e0dca8cd167ea4f9097fc420b0e2b6c55388dd413ba",
+      "url": "assets/textures/resources-assets-347-card004.3-75.webp",
+      "sha256": "eb57ceebdc1e5eabf8cd202d03792da813669418447688856e0326f68aefb037",
       "resourcePath": "packed/final/card004.3"
     },
     {
@@ -7915,8 +7915,8 @@
     {
       "key": "resources-assets/359",
       "name": "card010.12",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -7926,8 +7926,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-359-card010.12.webp",
-      "sha256": "26991a34afe4dfc3fdd845f716c9f9a8ef8fd5262a7e82839fe1ed1c6149a903",
+      "url": "assets/textures/resources-assets-359-card010.12-75.webp",
+      "sha256": "3d87fdf94cac4a6304629f10f9acb018273387db70d9783fece1a159ea3f1835",
       "resourcePath": "packed/final/card010.12"
     },
     {
@@ -8059,8 +8059,8 @@
     {
       "key": "resources-assets/367",
       "name": "card011.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -8070,8 +8070,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-367-card011.2.webp",
-      "sha256": "610cecd81c961aff2fa3a7dcd2db6e62e35b386c6f794d4ad861f6bfc34d5a21",
+      "url": "assets/textures/resources-assets-367-card011.2-75.webp",
+      "sha256": "dfd1f2b2c5a122eeefeab6df7e73562d4fb1e1c1579cbe703b19c4a7ab53748d",
       "resourcePath": "packed/final/card011.2"
     },
     {
@@ -8401,8 +8401,8 @@
     {
       "key": "resources-assets/386",
       "name": "card013b.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -8412,8 +8412,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-386-card013b.1.webp",
-      "sha256": "6cc23ea000191172a253562ac4167da2d0af1dcdef4bf3f28b2c8e120a3738cb",
+      "url": "assets/textures/resources-assets-386-card013b.1-75.webp",
+      "sha256": "f5384150b285cb4de1a28e5cd2546fef7591e227bda090de3f4dc3856be90a18",
       "resourcePath": "packed/final/card013b.1"
     },
     {
@@ -8437,8 +8437,8 @@
     {
       "key": "resources-assets/388",
       "name": "card005.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -8448,8 +8448,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-388-card005.1.webp",
-      "sha256": "e2f7a1c7893999586061661f0b0bfe9825f621b4be554a5e073abf1457332209",
+      "url": "assets/textures/resources-assets-388-card005.1-75.webp",
+      "sha256": "19f0b7d259fd2de15c96ca3ad9ffa192dd922579a50cb348530ace8b750fd252",
       "resourcePath": "packed/final/card005.1"
     },
     {
@@ -8545,8 +8545,8 @@
     {
       "key": "resources-assets/394",
       "name": "card010.10",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -8556,8 +8556,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-394-card010.10.webp",
-      "sha256": "6e6b5d4d5b96c9485f62efc3d5f9121b1ca06d8a082a9ede384d209960dfda1c",
+      "url": "assets/textures/resources-assets-394-card010.10-75.webp",
+      "sha256": "8b1f0f21c1fe6d36a54d0d94317fd3c94c0d59718164a1ddfa23b37ebf39c917",
       "resourcePath": "packed/final/card010.10"
     },
     {
@@ -9211,8 +9211,8 @@
     {
       "key": "resources-assets/431",
       "name": "card007.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -9222,8 +9222,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-431-card007.2.webp",
-      "sha256": "346591a9270cc6701b494490efe379ce15c576afd97609da10a6d109f1a9a660",
+      "url": "assets/textures/resources-assets-431-card007.2-75.webp",
+      "sha256": "68c50439a8364752afe745a407f492303b4935ad9f73916eccb7473f3d0b24d7",
       "resourcePath": "packed/final/card007.2"
     },
     {
@@ -9445,8 +9445,8 @@
     {
       "key": "resources-assets/444",
       "name": "card012.9",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -9456,8 +9456,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-444-card012.9.webp",
-      "sha256": "07cbf786af0aab5cc77d319e27788993068e4c8317200dbd675876d7f462c6d4",
+      "url": "assets/textures/resources-assets-444-card012.9-75.webp",
+      "sha256": "0a7be3adaa2e86139ca24a0f3c1a794203d4922cf64dff444e5c9a3036ea2756",
       "resourcePath": "packed/final/card012.9"
     },
     {
@@ -9553,8 +9553,8 @@
     {
       "key": "resources-assets/450",
       "name": "card010.5",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -9564,8 +9564,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-450-card010.5.webp",
-      "sha256": "c07fa56ae93534b92433f14bc8804831eb4b2f907d9923f915b97d73f31730b7",
+      "url": "assets/textures/resources-assets-450-card010.5-75.webp",
+      "sha256": "4e4d0ac7d1a984e034ab242ae7bc07637ce2814f51e341d6d8613c4133b2ed42",
       "resourcePath": "packed/final/card010.5"
     },
     {
@@ -9607,8 +9607,8 @@
     {
       "key": "resources-assets/453",
       "name": "card010.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -9618,8 +9618,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-453-card010.1.webp",
-      "sha256": "50c160097c554e35d9941df26f0d24c2c34376ad8fa1924fea23efb5f72d907e",
+      "url": "assets/textures/resources-assets-453-card010.1-75.webp",
+      "sha256": "c1bee0ca94ecc0d049234c104e7fcaedf299d0454f5b698c5bd8a4f628d214aa",
       "resourcePath": "packed/final/card010.1"
     },
     {
@@ -9661,8 +9661,8 @@
     {
       "key": "resources-assets/456",
       "name": "card005.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -9672,8 +9672,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-456-card005.0.webp",
-      "sha256": "d59435118afbcea1ef0040d5845020fb7fb54e9e079d294468f5ffd8f4e73c3c",
+      "url": "assets/textures/resources-assets-456-card005.0-75.webp",
+      "sha256": "8e719b9b1f932f4a09309e8632ddccfab6fecee50911134fb71344ddc9461982",
       "resourcePath": "packed/final/card005.0"
     },
     {
@@ -9787,8 +9787,8 @@
     {
       "key": "resources-assets/463",
       "name": "card007hilltop.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -9798,8 +9798,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-463-card007hilltop.0.webp",
-      "sha256": "bedddf39af0d2231e3a9d43b632e7037fd40f6c8d132bda8775a4e5066316e49",
+      "url": "assets/textures/resources-assets-463-card007hilltop.0-75.webp",
+      "sha256": "37c023d942949c7876098f757647da5e3da7c2c7f4c117b532c84347c0a68969",
       "resourcePath": "packed/final/card007hilltop.0"
     },
     {
@@ -10273,8 +10273,8 @@
     {
       "key": "resources-assets/490",
       "name": "card013b.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10284,8 +10284,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-490-card013b.2.webp",
-      "sha256": "5f25dc176f98cf9f8d395dac040119bf12eaad865e5b1cd770bc110bc53f54df",
+      "url": "assets/textures/resources-assets-490-card013b.2-75.webp",
+      "sha256": "a77d7622c2b36dfd5d185a9812cb56f27a4cd1dd383f2e20c8a0e1303fe03aa6",
       "resourcePath": "packed/final/card013b.2"
     },
     {
@@ -10345,8 +10345,8 @@
     {
       "key": "resources-assets/494",
       "name": "card010.4",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10356,8 +10356,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-494-card010.4.webp",
-      "sha256": "5a159479860752fc80f8081c17f8f0a89cd2557b1ebbe92b536488d40dfeba4c",
+      "url": "assets/textures/resources-assets-494-card010.4-75.webp",
+      "sha256": "e550c129b3d09e158d2a495576286df9eb37e031384b66363e3d84bf05da7a90",
       "resourcePath": "packed/final/card010.4"
     },
     {
@@ -10597,8 +10597,8 @@
     {
       "key": "resources-assets/508",
       "name": "card012memories.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10608,8 +10608,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-508-card012memories.0.webp",
-      "sha256": "cc56424b30d2bbaec950e84b10b79035ecddaef49cd74adef4a5a51b682f0b77",
+      "url": "assets/textures/resources-assets-508-card012memories.0-75.webp",
+      "sha256": "3cd750617b7ec2993f4a29112796e6bd4f1f7ef21edcf2d5f15f7ceda4570cf1",
       "resourcePath": "packed/final/card012memories.0"
     },
     {
@@ -10633,8 +10633,8 @@
     {
       "key": "resources-assets/510",
       "name": "card004.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10644,8 +10644,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-510-card004.2.webp",
-      "sha256": "ae05a2aeb76c6be22497cab849309da7771bb43ebd6c02b41f57a7eebb25525b",
+      "url": "assets/textures/resources-assets-510-card004.2-75.webp",
+      "sha256": "e4ac0c78b98f5440b2016066d46f15390ffb1d25be80d9e6953329bbef4975a1",
       "resourcePath": "packed/final/card004.2"
     },
     {
@@ -10813,8 +10813,8 @@
     {
       "key": "resources-assets/520",
       "name": "card001.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10824,8 +10824,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-520-card001.0.webp",
-      "sha256": "ed663d2e6a92bafeb907d56f04ad64c70129dd3b5461c5c48732f49f982aa1b7",
+      "url": "assets/textures/resources-assets-520-card001.0-75.webp",
+      "sha256": "fdf2fe0ec316005a84dba0cedc1557905d3107c95e11cd13c5a375a79fd673e8",
       "resourcePath": "packed/final/card001.0"
     },
     {
@@ -10867,8 +10867,8 @@
     {
       "key": "resources-assets/523",
       "name": "card013e.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10878,8 +10878,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-523-card013e.1.webp",
-      "sha256": "27755fa9d3e57f10a431b79f4c5121060ed8d9c1a623201056a22dbaf2ff7e58",
+      "url": "assets/textures/resources-assets-523-card013e.1-75.webp",
+      "sha256": "787b737d4740aaf08a589c5b7ce9f3bf6e32e0e18fb012ea8f15a2802ef14bed",
       "resourcePath": "packed/final/card013e.1"
     },
     {
@@ -10939,8 +10939,8 @@
     {
       "key": "resources-assets/527",
       "name": "card010.13",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -10950,8 +10950,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-527-card010.13.webp",
-      "sha256": "72622b23900d05a56b63151f165b4c249ce9ffe7fda44994543a7d65b2e4bc6a",
+      "url": "assets/textures/resources-assets-527-card010.13-75.webp",
+      "sha256": "21737631c571b30de46f121ee5f8767cb5b98326f8fdb38945aaa10405ab9c57",
       "resourcePath": "packed/final/card010.13"
     },
     {
@@ -11605,8 +11605,8 @@
     {
       "key": "resources-assets/564",
       "name": "card003.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -11616,8 +11616,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-564-card003.0.webp",
-      "sha256": "89886415eafd498d97eccb17f24c5b0474288da10a86efc435f5e1cb3015b11f",
+      "url": "assets/textures/resources-assets-564-card003.0-75.webp",
+      "sha256": "6064488a90fd910404cc49d538f97d572e421c9c342338efc124c38ceee4102f",
       "resourcePath": "packed/final/card003.0"
     },
     {
@@ -11839,8 +11839,8 @@
     {
       "key": "resources-assets/577",
       "name": "card011.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -11850,8 +11850,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-577-card011.1.webp",
-      "sha256": "8fa1d1f410bcf86b35196079619171afd646b0ad567e07d311742f4d65c392d3",
+      "url": "assets/textures/resources-assets-577-card011.1-75.webp",
+      "sha256": "25647808712d0d33425f94d79e333d161ded886355c01bc24c6cd8e676a02e40",
       "resourcePath": "packed/final/card011.1"
     },
     {
@@ -11875,8 +11875,8 @@
     {
       "key": "resources-assets/579",
       "name": "card005.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -11886,8 +11886,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-579-card005.2.webp",
-      "sha256": "56dbb9d254f055fc525265cdaf1143cc5947689adb2e1660471390be20dd5ae9",
+      "url": "assets/textures/resources-assets-579-card005.2-75.webp",
+      "sha256": "d5a8352564531895a88d21ec80a00d6675259bf0dcdccf5c823532730ab37511",
       "resourcePath": "packed/final/card005.2"
     },
     {
@@ -12019,8 +12019,8 @@
     {
       "key": "resources-assets/587",
       "name": "card007.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -12030,8 +12030,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-587-card007.1.webp",
-      "sha256": "b42dc12d7b40e3490b7876dcdedf5f39375e216091d3f79d96f96091f4131ae3",
+      "url": "assets/textures/resources-assets-587-card007.1-75.webp",
+      "sha256": "30fc5ae4ad0326cf00409b7c85ced8e744d1575935f55784c597ebf26fa4da25",
       "resourcePath": "packed/final/card007.1"
     },
     {
@@ -12199,8 +12199,8 @@
     {
       "key": "resources-assets/597",
       "name": "card013b.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -12210,8 +12210,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-597-card013b.0.webp",
-      "sha256": "ea4f354082f874a420ee203ed930da34c803d065b973efa1701bcc4301e5b610",
+      "url": "assets/textures/resources-assets-597-card013b.0-75.webp",
+      "sha256": "971324f1422c59b7f994e89c27e4cfeaaa3a37f76d00aac6cbf65f82f05d8663",
       "resourcePath": "packed/final/card013b.0"
     },
     {
@@ -12361,8 +12361,8 @@
     {
       "key": "resources-assets/606",
       "name": "card013e.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -12372,8 +12372,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-606-card013e.2.webp",
-      "sha256": "e6c8d6ab5a8c696ebd3dc975136829fa2a28985db2adc6586258e1618d65bb7d",
+      "url": "assets/textures/resources-assets-606-card013e.2-75.webp",
+      "sha256": "7f9993e80ffe7e0094fd4754756ac471c83f2508528b8c5b3d62276eee5a664e",
       "resourcePath": "packed/final/card013e.2"
     },
     {
@@ -13081,8 +13081,8 @@
     {
       "key": "resources-assets/646",
       "name": "card010.2",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -13092,8 +13092,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-646-card010.2.webp",
-      "sha256": "35c8cc25cf3c6bfc2c838c43815f9a0e3b3504e16447e4230cc6f2451c33a42f",
+      "url": "assets/textures/resources-assets-646-card010.2-75.webp",
+      "sha256": "23970ece92b943f8b9c1e997bfd9f3c565492dd5b40406591e498164eb127b8b",
       "resourcePath": "packed/final/card010.2"
     },
     {
@@ -13927,8 +13927,8 @@
     {
       "key": "resources-assets/693",
       "name": "card012.4",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -13938,8 +13938,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-693-card012.4.webp",
-      "sha256": "833a051371bcb67f5440110ecbb6cb690a9685ad93b9b1a82f9a5cc85140368e",
+      "url": "assets/textures/resources-assets-693-card012.4-75.webp",
+      "sha256": "c6182d3715892ff62440dba4bba0d44592483467aeea46c6c7ae215414ca04d2",
       "resourcePath": "packed/final/card012.4"
     },
     {
@@ -14233,8 +14233,8 @@
     {
       "key": "resources-assets/710",
       "name": "card012quilt.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14244,8 +14244,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-710-card012quilt.0.webp",
-      "sha256": "7a4a853572d21f29d115aced23be22bfc6fe5e3355d4d45ecee43bb6448a1883",
+      "url": "assets/textures/resources-assets-710-card012quilt.0-75.webp",
+      "sha256": "93bb2fcf1700441fbff728e95be73b2167b67b351320859b777c5ac2f6aea755",
       "resourcePath": "packed/final/card012quilt.0"
     },
     {
@@ -14269,8 +14269,8 @@
     {
       "key": "resources-assets/712",
       "name": "card007.4",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14280,8 +14280,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-712-card007.4.webp",
-      "sha256": "ae2e367cde78ea01dec5a9517e1b2b1e381cf4f1114dbbe682f54e8be100ff57",
+      "url": "assets/textures/resources-assets-712-card007.4-75.webp",
+      "sha256": "f5861746bd18e2496939170e224a2cfd9d2ddaaef2193b9151c7bf439ed80d8f",
       "resourcePath": "packed/final/card007.4"
     },
     {
@@ -14431,8 +14431,8 @@
     {
       "key": "resources-assets/721",
       "name": "card010.6",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14442,15 +14442,15 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-721-card010.6.webp",
-      "sha256": "8bc707813df58258ff2ec4ec887a37df3638e90a13b83a83867827e8ec64035e",
+      "url": "assets/textures/resources-assets-721-card010.6-75.webp",
+      "sha256": "4d7f121b35aa1df0304abeffadf053525b9e33e3fcab5d7e1507fd7274d472f7",
       "resourcePath": "packed/final/card010.6"
     },
     {
       "key": "resources-assets/722",
       "name": "card001.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14460,15 +14460,15 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-722-card001.1.webp",
-      "sha256": "408ca417cb74add0b9018cd68a76fa40cad58860b4cf55afec37da0135fb75a1",
+      "url": "assets/textures/resources-assets-722-card001.1-75.webp",
+      "sha256": "bb659b5544d008594a0ca03e47a4cd39bf730d1c87484d9cf95cc6fec005dd5e",
       "resourcePath": "packed/final/card001.1"
     },
     {
       "key": "resources-assets/723",
       "name": "card007.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14478,8 +14478,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-723-card007.0.webp",
-      "sha256": "94ce7aa4859d5363bc2839cba8c657881f9de65a8b7e18957d8c352603d0bb5b",
+      "url": "assets/textures/resources-assets-723-card007.0-75.webp",
+      "sha256": "eff67aee8a4dc4f4507c45e6b2ee9ae03af31cd2e8862324e25d511f364545f5",
       "resourcePath": "packed/final/card007.0"
     },
     {
@@ -14503,8 +14503,8 @@
     {
       "key": "resources-assets/725",
       "name": "card001c.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14514,8 +14514,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-725-card001c.0.webp",
-      "sha256": "6a7c6bb80e74d4b74a317bc15d87ecdcf11bfa033a786cd4123d9d0cd89da95f",
+      "url": "assets/textures/resources-assets-725-card001c.0-75.webp",
+      "sha256": "77c98a07a446024d76cf024096a48c6098d094067d487f47cb8cef927e37b13e",
       "resourcePath": "packed/final/card001c.0"
     },
     {
@@ -14863,8 +14863,8 @@
     {
       "key": "resources-assets/745",
       "name": "card007.3",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -14874,8 +14874,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-745-card007.3.webp",
-      "sha256": "f553b9daef73ede5efc6ef08df6acb070542c3d466fdb0f8c3b1d653baa25d0f",
+      "url": "assets/textures/resources-assets-745-card007.3-75.webp",
+      "sha256": "6b5655db4026d43bdf95222a7bf96d44ae7e8dc8e9e708447dbc4f304b0221fb",
       "resourcePath": "packed/final/card007.3"
     },
     {
@@ -15079,8 +15079,8 @@
     {
       "key": "resources-assets/757",
       "name": "card004.1",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -15090,8 +15090,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-757-card004.1.webp",
-      "sha256": "4bd82461f8a60ccb373408172955fc5b224552accefb78fdcee0a104cb20c875",
+      "url": "assets/textures/resources-assets-757-card004.1-75.webp",
+      "sha256": "e14cf500921c6f927151c2005fa9465a70a477f05dc546ee59c8763559d96b12",
       "resourcePath": "packed/final/card004.1"
     },
     {
@@ -15133,8 +15133,8 @@
     {
       "key": "resources-assets/760",
       "name": "card012.8",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -15144,8 +15144,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-760-card012.8.webp",
-      "sha256": "e96c3f257923fc3255632df22f25f5a51e6a1107e5d2ffb9661112abb86b429d",
+      "url": "assets/textures/resources-assets-760-card012.8-75.webp",
+      "sha256": "cc0c7627fd4bd47b73ca2a4282c9ee05f6f984251d5d2485456a449554c42d2f",
       "resourcePath": "packed/final/card012.8"
     },
     {
@@ -15565,8 +15565,8 @@
     {
       "key": "resources-assets/784",
       "name": "card010.3",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -15576,15 +15576,15 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-784-card010.3.webp",
-      "sha256": "8c2a69e6207248c294f772b95513d434bbb1b6cab9cba1dc24b43cd08fa346d9",
+      "url": "assets/textures/resources-assets-784-card010.3-75.webp",
+      "sha256": "590c6e0f03e1c25a0b1935c763e9bee14ebac5bda9840a96f529701d3b1c4e47",
       "resourcePath": "packed/final/card010.3"
     },
     {
       "key": "resources-assets/785",
       "name": "card004.0",
-      "width": 4096,
-      "height": 4096,
+      "width": 3072,
+      "height": 3072,
       "format": 12,
       "mipCount": 1,
       "imageSize": 16777216,
@@ -15594,8 +15594,8 @@
       "colorSpace": 1,
       "size": 16777216,
       "status": "converted",
-      "url": "assets/textures/resources-assets-785-card004.0.webp",
-      "sha256": "e3f62d71d46bb77ddcaf4de4c58f158780471fc5de664bcaa15b7ffa844c362c",
+      "url": "assets/textures/resources-assets-785-card004.0-75.webp",
+      "sha256": "a024e95ce76ca8ccd519422141ea9865e61e0aea29f21f97f60e5abc3195316d",
       "resourcePath": "packed/final/card004.0"
     },
     {
