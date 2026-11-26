@@ -71,6 +71,32 @@ console.log(
   "状态检查通过：原版右结合公式、缺变量false、失效引用回落所属卡、初始状态、鼠标入场、动画完成门控、章节检查点。",
 );
 
+// 让剧情条件全部通过，以单独验证目标缺失时的导航过滤。
+const navigationState = new RuntimeState(project);
+navigationState.isSatisfied = () => true;
+const missingDestination = project
+  .all("LocationTransition")
+  .filter((transition) => !project.get(transition.attrs.destLocation));
+assert.ok(missingDestination.length > 0);
+const affectedLocations = new Set(
+  missingDestination.map((transition) =>
+    project.owner(transition, "SceneLocation"),
+  ),
+);
+for (const location of affectedLocations) {
+  const cardGuid = project.owner(location, "Card").attrs.guid;
+  navigationState.setLocation(cardGuid, location.attrs.guid);
+  const validTransitions = project
+    .container(location, "transitions", "LocationTransition")
+    .filter((transition) => !missingDestination.includes(transition));
+  assert.deepEqual(
+    navigationState.getTransitions(cardGuid),
+    validTransitions,
+    location.attrs.guid,
+  );
+}
+console.log("导航回归通过：缺失目标的入口被过滤，同一位置的有效入口仍可用。");
+
 // 原项目真实状态：前一个不可打断转移不能挡住后面的可打断转移。
 const lampLoop = project.get(
   "lamp thought loop-8460ae9f-2892-4fe1-87ad-c40a9040ed70",

@@ -222,6 +222,8 @@ export class RuntimeState {
     return this.project
       .container(location, "transitions", "LocationTransition")
       .filter((t) => {
+        const destination = this.project.get(t.attrs.destLocation);
+        if (destination?.type !== "SceneLocation") return false;
         const pred = this.project.container(t, "predicate")[0];
         return this.isSatisfied(pred) === true;
       });
