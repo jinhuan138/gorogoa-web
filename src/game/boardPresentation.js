@@ -46,13 +46,17 @@ export function createBoardPresentation(canvas) {
   );
   canvas.after(cardLayerHost);
   const cardLayers = new Map();
+  const touchPrimary = window.matchMedia("(pointer: coarse)");
   let backdropDrawing = null;
   let rasterScale = canvas.width / BOARD_SIZE;
   let density = 0;
   let resizePending = true;
 
   function resizeBoard() {
-    const nextDensity = Math.min(globalThis.devicePixelRatio || 1, 2);
+    const nextDensity = Math.min(
+      globalThis.devicePixelRatio || 1,
+      touchPrimary.matches ? 1.5 : 2,
+    );
     if (!resizePending && density === nextDensity) return false;
     density = nextDensity;
     resizePending = false;
